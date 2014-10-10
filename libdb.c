@@ -74,7 +74,6 @@ struct DB *dbcreate(const char *file, const struct DBC *conf)
 	if (conf->mem_size > 16 * 1024 * 1024) return NULL;
 	if (conf->chunk_size && conf->db_size % conf->chunk_size) return NULL;
 
-	int i;
 	unsigned char end_file;
 
 	struct DB *db = (struct DB *) malloc(sizeof(*db));
@@ -109,14 +108,12 @@ struct DB *dbcreate(const char *file, const struct DBC *conf)
 
 	//Статистика использования блоков базы данных
 	db->block_stat = (Block) malloc(db->head.stat_count * db->head.chunk_size);
-	for (i = 0; i < db->head.data_count / 8; ++i) db->block_stat[i] = 0;
 	db->block_stat[0] |= (0x1 << 7);
 	fseek(db->fd, db->head.stat_offset * db->head.chunk_size, SEEK_SET);
 	fwrite(db->block_stat, db->head.stat_count * db->head.chunk_size, 1, db->fd);
 
 	//Головной элемент B дерева базы данных
 	db->root = (Block) malloc(db->head.chunk_size);
-
 	set_n(db->root, 0);
 	set_leaf(db->root, 1);
 	set_num(db->root, 0);
@@ -164,7 +161,7 @@ struct DB *dbopen  (const char *file, const struct DBC *conf)
 	fread(db->block_stat, db->head.stat_count * db->head.chunk_size, 1, db->fd);
 	//Головной элемент B дерева базы данных
 	db->root = (Block) malloc(db->head.chunk_size);
-	fseek(db->fd, db->head.data_offset * db->head.chunk_size, SEEK_SET);
+	fseek(db->fd, (db->head.data_offset + db->head.root_id) * db->head.chunk_size, SEEK_SET);
 	fread(db->root, db->head.chunk_size, 1, db->fd);
 
 	return db;
@@ -235,20 +232,19 @@ int db_put(struct DB *db, struct DBT *key, struct DBT *data)
     if (res != -1) {
     	set_value(r, res, data->data);
 		db_block_write(db, r, get_num(r));
-		if (db->head.root_id == get_num(r))
-			memcpy(db->root, r, db->head.chunk_size);
+		if (r) free(r);
         return 0;
     }
 	memcpy(r, db->root, db->head.chunk_size);
     if (get_n(r) == 2 * db->head.t - 1) {
-		int id = db_block_alloc(db);
+    	int id = db_block_alloc(db);
 		Block s = (Block) malloc(db->head.chunk_size);
 		set_n(s, 0);
 		set_leaf(s, 0);
+		set_num(s, id);
 		set_c(s, 0, db->head.root_id);
 		memcpy(db->root, s, db->head.chunk_size);
 		db->head.root_id = id;
-
 		b_tree_split_child(db, db->root, 0, r);
 		b_tree_insert_nonfull(db, db->root, key, data);
 		if (s) free(s);
@@ -269,30 +265,34 @@ void b_tree_split_child(struct DB *db, Block x, int i, Block y)
 	Block z = (Block) malloc(db->head.chunk_size);
 	set_leaf(z, get_leaf(y));
 	set_n(z, t - 1);
-	for (j = 0; j < t - 1; ++j){
+	set_num(z, id);
+	for (j = 0; j < t - 1; j++){
 		set_key(z, j, get_key(y, j + t));
 		set_value(z, j, get_value(y, j + t));
-		set_c(z, j, get_c(y, j + t));
 	}
-	set_c(z, t - 1, get_c(y, 2 * t - 1));
+
+	if (!get_leaf(y))
+		for (j = 0; j < t; j++)
+			set_c(z, j, get_c(y, j + t));
+
 	set_n(y, t - 1);
-
-	for (j = get_n(x); j >= i; --j)
+	for (j = get_n(x); j >= i; j--) {
 		set_c(x, j + 1, get_c(x, j));
+	}
 
-	set_c(x, i, get_num(z));
+	set_c(x, i + 1, get_num(z));
 
-	for (j = get_n(x) - 1; j >= i - 1; --j) {
+	for (j = get_n(x) - 1; j >=0, j >= i - 1; j--) {
 		set_key(x, j + 1, get_key(x, j));
 		set_value(x, j + 1, get_value(x, j));
 	}
-	set_key(x, i - 1, get_key(y, t - 1));
-	set_value(x, i - 1, get_value(y, t - 1));
+	set_key(x, i, get_key(y, t - 1));
+	set_value(x, i, get_value(y, t - 1));
 	set_n(x, get_n(x) + 1);
-
 	db_block_write(db, y, get_num(y));
 	db_block_write(db, z, get_num(z));
 	db_block_write(db, x, get_num(x));
+	if (z) free(z);
 }
 
 void b_tree_insert_nonfull(struct DB *db, Block x, struct DBT *key, struct DBT *data)
@@ -301,7 +301,7 @@ void b_tree_insert_nonfull(struct DB *db, Block x, struct DBT *key, struct DBT *
 	int t = db->head.t;
 	int id;
 	if (get_leaf(x)) {
-		while (i > 0 && strncmp(key->data, get_key(x, i), KEY_SIZE) < 0) {
+		while (i > 0 && strncmp(key->data, get_key(x, i - 1), KEY_SIZE) < 0) {
 			set_key(x, i, get_key(x, i - 1));
 			set_value(x, i, get_value(x, i - 1));
 			i--;
@@ -313,9 +313,8 @@ void b_tree_insert_nonfull(struct DB *db, Block x, struct DBT *key, struct DBT *
 		if (get_num(x) == get_num(db->root))
 			db_block_read(db, db->root, get_num(x));
 	} else {
-		while (i >= 0 && strncmp(key->data, get_key(x, i), KEY_SIZE) < 0)
-			i++;
-		i++;
+		while (i > 0 && strncmp(key->data, get_key(x, i - 1), KEY_SIZE) < 0)
+			i--;
 		Block block = (Block) malloc(db->head.chunk_size);
 		db_block_read(db, block, get_c(x, i));
 		if (get_n(block) == 2 * t - 1) {
@@ -324,6 +323,7 @@ void b_tree_insert_nonfull(struct DB *db, Block x, struct DBT *key, struct DBT *
 				i++;
 		}
 		b_tree_insert_nonfull(db, block, key, data);
+		if (block) free(block);
 	}
 }
 
@@ -338,6 +338,13 @@ void db_block_write(struct DB *db, Block block, int id)
 {
 	fseek(db->fd, (db->head.data_offset + id) * db->head.chunk_size, SEEK_SET);
 	fwrite(block, db->head.chunk_size, 1, db->fd);
+	if (db->head.root_id == get_num(block)) {
+		memcpy(db->root, block, db->head.chunk_size);
+		fseek(db->fd, (db->head.data_offset + db->head.root_id) * db->head.chunk_size, SEEK_SET);
+		fwrite(db->root, db->head.chunk_size, 1, db->fd);
+		fseek(db->fd, 0, SEEK_SET);
+		fwrite(&db->head, sizeof(db->head), 1, db->fd);
+	}
 }
 
 int db_block_alloc(struct DB *db)
@@ -375,6 +382,10 @@ void db_block_free(struct DB *db, int id)
 void print_db(struct DB *db)
 {
 	int i, j;
+	printf("db_size = %d, chunk_size = %d, mem_size = %d,\n", db->head.db_size, db->head.chunk_size, db->head.mem_size);
+	printf("stat_offset = %d, stat_count = %d, data_offset = %d, data_count = %d,\n", db->head.stat_offset, db->head.stat_count, db->head.data_offset, db->head.data_count);
+	printf("root_id = %d, head.t = %d, root_n = %d, root_leaf = %d, root_num = %d\n\n", db->head.root_id, db->head.t, ((struct NodeHead *)db->root)->n, ((struct NodeHead *)db->root)->leaf, ((struct NodeHead *)db->root)->num);
+
 	for (i = 0; i < db->head.data_count / 8; ++i)
 		if ((db->block_stat)[i])
 			for (j = 0; j < 8; ++j)
@@ -388,8 +399,9 @@ void print_block(struct DB *db, int id)
 	db_block_read(db, block, id);
 	printf("id = %d; n = %d; leaf = %d; num = %d\n", id, get_n(block), get_leaf(block), get_num(block));
 	for (i = 0; i < get_n(block); ++i)
-		printf("(key = %s, value = %s, c = %d) ", get_key(block, i), get_value(block, i), get_c(block, i));
-	printf("\n");
+		printf("(key = %s, value = %s, cl = %d, cr = %d) ", get_key(block, i), get_value(block, i), get_c(block, i), get_c(block, i + 1));
+	printf("\n\n");
+	if (block) free(block);
 }
 
 
