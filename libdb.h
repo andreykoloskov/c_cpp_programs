@@ -21,7 +21,7 @@ struct DBC
         /* Maximum memory size */
         /* 16MB by default */
 	//Пока не нужен
-        size_t mem_size;
+        //size_t mem_size;
 };
 
 //Данные с размером
@@ -36,7 +36,7 @@ struct Head
 {
 	size_t db_size;						//Размер файла БД
     size_t chunk_size;					//Размер блока в B дереве
-    size_t mem_size;					//Размер памяти (пока не нужен)
+    //size_t mem_size;					//Размер памяти (пока не нужен)
 	int stat_offset;					//Смещение начала области статистики (в блоках)
 	int stat_count;						//Количество блоков статистики
 	int data_offset;					//Смещение начала области данных (в блоках)
@@ -54,7 +54,9 @@ struct NodeHead
 
 struct NodeData
 {
+	int key_size;
 	unsigned char key[KEY_SIZE];
+	int value_size;
 	unsigned char value[VALUE_SIZE];
 	int c;
 };
@@ -87,13 +89,13 @@ struct DB {
 	void (*block_free)(struct DB *db, int id); 							//Освобождение блока
 }; /* Need for supporting multiple backends (HASH/BTREE) */
 
-struct DB *dbcreate(const char *file, const struct DBC *conf);
-struct DB *dbopen  (const char *file, const struct DBC *conf); /* Metadata in file */
+struct DB *dbcreate(const char *file, const struct DBC conf);
+struct DB *dbopen  (const char *file, const struct DBC conf); /* Metadata in file */
 
-int db_close(struct DB *db);
-int db_del(struct DB *db, struct DBT *key);
-int db_get(struct DB *db, struct DBT *key, struct DBT *data);
-int db_put(struct DB *db, struct DBT *key, struct DBT *data);
+int db_db_close(struct DB *db);
+int db_db_del(struct DB *db, struct DBT *key);
+int db_db_get(struct DB *db, struct DBT *key, struct DBT *data);
+int db_db_put(struct DB *db, struct DBT *key, struct DBT *data);
 
 void db_block_read(struct DB *db, Block block, int id);
 void db_block_write(struct DB *db, Block block, int id);
@@ -106,3 +108,8 @@ void b_tree_insert_nonfull(struct DB *db, Block x, struct DBT *key, struct DBT *
 
 void print_db(struct DB *db);
 void print_block(struct DB *db, int id);
+
+int db_close(struct DB *db);
+int db_del(struct DB *, void *, size_t);
+int db_get(struct DB *, void *, size_t, void **, size_t *);
+int db_put(struct DB *, void *, size_t, void * , size_t  );

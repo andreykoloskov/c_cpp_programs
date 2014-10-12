@@ -3,4 +3,4 @@ all:
 main:
 	gcc -g -O0 libdb.c main.c -o main
 clean:
-	rm -f main libdb.so a.out
+	rm -f test libdb.so a.out
