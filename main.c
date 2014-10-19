@@ -26,29 +26,29 @@ main(int argc, char *argv[])
 	strcpy(key.data, "k18"); strcpy(data.data, "v18");
 	db_put(db, key.data, 3, data.data, 3);
 	strcpy(key.data, "k0"); strcpy(data.data, "v0");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "k15"); strcpy(data.data, "v15");
 	db_put(db, key.data, 3, data.data, 3);
 	strcpy(key.data, "k12"); strcpy(data.data, "v12");
 	db_put(db, key.data, 3, data.data, 3);
 	strcpy(key.data, "k1"); strcpy(data.data, "v1");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "k2"); strcpy(data.data, "v2");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "k3"); strcpy(data.data, "v3");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "k4"); strcpy(data.data, "v4");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "k5"); strcpy(data.data, "v5");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "k6"); strcpy(data.data, "v6");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "k7"); strcpy(data.data, "v7");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "k8"); strcpy(data.data, "v8");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "k9"); strcpy(data.data, "v9");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "k10"); strcpy(data.data, "v10");
 	db_put(db, key.data, 3, data.data, 3);
 	strcpy(key.data, "k11"); strcpy(data.data, "v11");
@@ -99,29 +99,29 @@ main(int argc, char *argv[])
 	strcpy(key.data, "d18"); strcpy(data.data, "v18");
 	db_put(db, key.data, 3, data.data, 3);
 	strcpy(key.data, "d0"); strcpy(data.data, "v0");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "d15"); strcpy(data.data, "v15");
 	db_put(db, key.data, 3, data.data, 3);
 	strcpy(key.data, "d12"); strcpy(data.data, "v12");
 	db_put(db, key.data, 3, data.data, 3);
 	strcpy(key.data, "d1"); strcpy(data.data, "v1");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "d2"); strcpy(data.data, "v2");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "d3"); strcpy(data.data, "v3");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "d4"); strcpy(data.data, "v4");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "d5"); strcpy(data.data, "v5");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "d6"); strcpy(data.data, "v6");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "m7"); strcpy(data.data, "v7");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "m8"); strcpy(data.data, "v8");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "m9"); strcpy(data.data, "v9");
-	db_put(db, key.data, 3, data.data, 3);
+	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "m10"); strcpy(data.data, "v10");
 	db_put(db, key.data, 3, data.data, 3);
 	strcpy(key.data, "m11"); strcpy(data.data, "v11");
@@ -151,7 +151,7 @@ main(int argc, char *argv[])
 		printf("%s %s\n", key.data, data.data);
 	if (data.data) free(data.data);
 	strcpy(key.data, "k4");
-	if (db_get(db, key.data, 3, &(data.data), &sz) != -1)
+	if (db_get(db, key.data, 2, &(data.data), &sz) != -1)
 		printf("%s %s\n", key.data, data.data);
 	if (data.data) free(data.data);
 	strcpy(key.data, "k128");
@@ -159,10 +159,21 @@ main(int argc, char *argv[])
 		printf("%s %s\n", key.data, data.data);
 	if (data.data) free(data.data);
 
-	if (key.data) free(key.data);
-	if (data.data) free(data.data);
+	print_db(db);
+
+	strcpy(key.data, "m20");
+	db_del(db, key.data, 3);
+	strcpy(key.data, "k19");
+	db_del(db, key.data, 3);
+	strcpy(key.data, "d0");
+	db_del(db, key.data, 2);
+	strcpy(key.data, "k18");
+	db_del(db, key.data, 3);
 
 	print_db(db);
+
+	if (key.data) free(key.data);
+	if (data.data) free(data.data);
 
 	db->close(db);
 

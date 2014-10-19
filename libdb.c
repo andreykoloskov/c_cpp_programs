@@ -105,6 +105,14 @@ inline int db_strncmp(void *key_data1, int key_size1, void *key_data2, int key_s
 	} else return res;
 }
 /////////////////////////////////////////////
+inline void set_key_value(Block block, int i, void *key_data, int key_size, void *value_data, int value_size)
+{
+	set_key_size(block, i, key_size);
+	set_key(block, i, key_data, key_size);
+	set_value_size(block, i, value_size);
+	set_value(block, i, value_data, value_size);
+}
+/////////////////////////////////////////////
 
 //Создание базы
 struct DB *dbcreate(const char *file, const struct DBC conf)
@@ -196,7 +204,7 @@ struct DB *dbopen  (const char *file, const struct DBC conf)
 
 	//Заголовок базы данных
 	fread(&db->head, sizeof(db->head), 1, db->fd);
-	////Статистика использования блоков базы данных
+	//Статистика использования блоков базы данных
 	db->block_stat = (Block) malloc(db->head.stat_count * db->head.chunk_size);
 	fseek(db->fd, db->head.stat_offset * db->head.chunk_size, SEEK_SET);
 	fread(db->block_stat, db->head.stat_count * db->head.chunk_size, 1, db->fd);
@@ -223,8 +231,250 @@ int db_db_close(struct DB *db)
 //Удаление
 int db_db_del(struct DB *db, struct DBT *key)
 {
-	return 0;
+	return db_may_del(db, db->root, key);
 }
+
+//1. Если: x - лист, k принадлежит x => удаляем k
+// В x всегда будет не менее T элементов (благодаря п. 3)
+void db_may_del_from_leaf_1(struct DB *db, Block x, struct DBT *key)
+{
+	int i, j;
+	for (i = 0; i < get_n(x); i++) {
+		if (!db_strncmp(key->data, key->size, get_key(x, i), get_key_size(x, i))) {
+			for (j = i + 1; j < get_n(x); j++)
+				set_key_value(x, j - 1, get_key(x, j), get_key_size(x, j), get_value(x, j), get_value_size(x, j));
+			set_n(x, get_n(x) - 1);
+			db_block_write(db, x, get_num(x));
+		}
+	}
+}
+
+//2. Если: x - внутренний узел, k принадлежит x =>
+//  a) Если: y - дочерний к x, непосредственно предшествует k, y - содержит не менее T ключей =>
+//      - Находим k' - предшественник k в поддереве с корнем y;
+//      - Рекурсивно удаляем k';
+//      - Заменяем k в x ключем k';
+void db_may_del_from_not_leaf_2a(struct DB *db, Block x, Block y, Block dop, struct DBT *key, int i)
+{
+	memcpy(dop, y, db->head.chunk_size);
+	while (!get_leaf(dop))
+		db_block_read(db, dop, get_c(dop, get_n(dop)));
+	struct DBT key1, value1;
+	key1.data = get_key(dop, get_n(dop) - 1);
+	key1.size = get_key_size(dop, get_n(dop) - 1);
+	value1.data = get_value(dop, get_n(dop) - 1);
+	value1.size = get_value_size(dop, get_n(dop) - 1);
+	db_may_del(db, y, &key1);
+	set_key_value(x, i, key1.data, key1.size, value1.data, value1.size);
+	db_block_write(db, x, get_num(x));
+}
+
+//2. Если: x - внутренний узел, k принадлежит x =>
+//  b) Если: z - дочерний к x, непосредственно следует за k, z - содержит не менее T ключей =>
+//      - Находим k' - следующий за k в поддереве с корнем z;
+//      - Рекурсивно удаляем k';
+//      - Заменяем k в x ключем k';
+void db_may_del_from_not_leaf_2b(struct DB *db, Block x, Block z, Block dop, struct DBT *key, int i)
+{
+	memcpy(dop, z, db->head.chunk_size);
+	while (!get_leaf(dop))
+		db_block_read(db, dop, get_c(dop, 0));
+	struct DBT key1, value1;
+	key1.data = get_key(dop, 0);
+	key1.size = get_key_size(dop, 0);
+	value1.data = get_value(dop, 0);
+	value1.size = get_value_size(dop, 0);
+	set_key_value(x, i, key1.data, key1.size, value1.data, value1.size);
+	db_block_write(db, x, get_num(x));
+	db_may_del(db, z, &key1);
+}
+
+//2. Если: x - внутренний узел, k принадлежит x =>
+//  c) Если: y и z - содержат по T - 1 ключей =>
+//      - В y вносим k и все ключи из z;
+//      - Из x удаляем k и указатель на z;
+//      - Если x - корень, и в нем не остается ключей =>
+//          -- y - новый корень;
+//      - Освобождаем z (видимо на место z надо записать последний блок в файле);
+//      - Рекурсиво удаляем k из y;
+void db_may_del_from_not_leaf_2c(struct DB *db, Block x, Block y, Block z, Block dop, struct DBT *key, int i)
+{
+	int j;
+	set_n(y, get_n(y) + 1);
+	struct DBT *value;
+	db_db_get(db, key, value);
+	set_key_value(y, get_n(y) - 1, key->data, key->size, value->data, value->size);
+	for (j = get_n(y); j < get_n(y) + get_n(z); j++)
+		set_key_value(y, j, get_key(z, j - get_n(y)), get_key_size(z, j - get_n(y)), get_value(z, j - get_n(y)), get_value_size(z, j - get_n(y)));
+	for (j = get_n(y); j <= get_n(y) + get_n(z); j++)
+		set_c(y, j, get_c(z, j - get_n(y)));
+	set_n(y, get_n(y) + get_n(z));
+	set_n(z, 0);
+	for (j = i; j < get_n(x) - 1; j++)
+		set_key_value(x, j, get_key(x, j + 1), get_key_size(x, j + 1), get_value(x, j + 1), get_value_size(x, j + 1));
+	for (j = i + 1; j < get_n(x); j++)
+		set_c(x, j, get_c(x, j + 1));
+	set_n(x, get_n(x) - 1);
+
+	if (!get_n(x)) {
+		//Получился нулевой корень
+		//Это может быть только корень, т.к. в ином случае 0 не получится
+		db_block_free(db, db->head.root_id);
+		db->head.root_id = get_num(y);
+		db_block_write(db, y, get_num(y));
+	} else {
+		db_block_write(db, x, get_num(x));
+		db_block_write(db, y, get_num(y));
+	}
+	db_block_write(db, z, get_num(z));
+	db_may_del(db, y, key);
+}
+
+//3. Если: x - внутренний узел, k - отсутствует в x =>
+//      - Находим ci[x] - корень поддерева, которое должно содержать k (если он вообще есть)
+//      a) Если: ci[x] - содержит T - 1 ключей, левый сосед из x содержит не менее T ключей =>
+//          -- В ci[x] передадим ключ - разделитель между ci[x] и этим соседом из x;
+//          -- На место этого ключа переместим крайний ключ из соседнего узла;
+//          -- Перенесем указатель из соседнего узла в ci[x];
+void db_may_del_from_not_leaf_3a_l(struct DB *db, Block x, Block c, Block l, struct DBT *key, int i)
+{
+	int j;
+	set_n(c, get_n(c) + 1);
+	for (j = get_n(c) - 1; j > 0; j--)
+		set_key_value(c, j, get_key(c, j - 1), get_key_size(c, j - 1), get_value(c, j - 1), get_value_size(c, j - 1));
+	for (j = get_n(c); j > 0; j--)
+		set_c(c, j, get_c(c, j - 1));
+	set_key_value(c, 0, get_key(x, i - 1), get_key_size(x, i - 1), get_value(x, i - 1), get_value_size(x, i - 1));
+	set_c(c, 0, get_c(l, get_n(l)));
+	set_key_value(x, i - 1, get_key(l, get_n(l) - 1), get_key_size(l, get_n(l) - 1), get_value(l, get_n(l) - 1), get_value_size(l, get_n(l) - 1));
+	set_n(l, get_n(l - 1));
+	db_block_write(db, l, get_num(l));
+	db_block_write(db, x, get_num(x));
+	db_block_write(db, c, get_num(c));
+}
+
+//3. Если: x - внутренний узел, k - отсутствует в x =>
+//      - Находим ci[x] - корень поддерева, которое должно содержать k (если он вообще есть)
+//      a) Если: ci[x] - содержит T - 1 ключей, правый сосед из x содержит не менее T ключей =>
+//          -- В ci[x] передадим ключ - разделитель между ci[x] и этим соседом из x;
+//          -- На место этого ключа переместим крайний ключ из соседнего узла;
+//          -- Перенесем указатель из соседнего узла в ci[x];
+void db_may_del_from_not_leaf_3a_r(struct DB *db, Block x, Block c, Block r, struct DBT *key, int i)
+{
+	int j;
+	set_n(c, get_n(c) + 1);
+	set_key_value(c, get_n(c) - 1, get_key(x, i), get_key_size(x, i), get_value(x, i), get_value_size(x, i));
+	set_c(c, get_n(c), get_c(r, 0));
+	set_key_value(x, i, get_key(r, 0), get_key_size(r, 0), get_value(r, 0), get_value_size(r, 0));
+	for (j = 1; j < get_n(r); j++)
+		set_key_value(r, j - 1, get_key(r, j), get_key_size(r, j), get_value(r, j), get_value_size(r, j));
+	for (j = 1; j <= get_n(r); j++)
+		set_c(r, j - 1, get_c(r, j));
+	set_n(r, get_n(r) - 1);
+	db_block_write(db, r, get_num(r));
+	db_block_write(db, x, get_num(x));
+	db_block_write(db, c, get_num(c));
+}
+
+//3. Если: x - внутренний узел, k - отсутствует в x =>
+//      b) Если: ci[x] и оба соседа из x содержат по T - 1 ключей =>
+//          -- В ci[x] добавим ключ - разделитель из x и одного (например левого) соседа;
+//          -- Если x - корень, и в нем не остается ключей =>
+//              --- ci[x] - новый корень;
+void db_may_del_from_not_leaf_3b(struct DB *db, Block x, Block c, Block l, Block r, struct DBT *key, int i)
+{
+	int j;
+	    int t = db->head.t;
+	if (i > 0 && get_n(l) < t) {
+		set_n(c, get_n(c) + get_n(l) + 1);
+		for (j = get_n(l) + 1; j < get_n(c); j++)
+			set_key_value(c, j, get_key(c, j - get_n(l) - 1), get_key_size(c, j - get_n(l) - 1), get_value(c, j - get_n(l) - 1), get_value_size(c, j - get_n(l) - 1));
+		for (j = get_n(l) + 1; j <= get_n(c); j++)
+			set_c(c, j, get_c(c, j - get_n(l) - 1));
+		for (j = 0; j < get_n(l); j++)
+			set_key_value(c, j, get_key(l, j), get_key_size(l, j), get_value(l, j), get_value_size(l, j));
+		for (j = 0; j <= get_n(l); j++)
+			set_c(c, j, get_c(l, j));
+		set_key_value(c, get_n(l), get_key(x, i - 1), get_key_size(x, i - 1), get_value(x, i - 1), get_value_size(x, i - 1));
+		set_n(l, 0);
+		for (j = i - 1; j < get_n(x) - 1; j++)
+			set_key_value(x, j, get_key(x, j + 1), get_key_size(x, j + 1), get_value(x, j + 1), get_value_size(x, j + 1));
+		for (j = i - 1; j < get_n(x); j++)
+			set_c(x, j, get_c(x, j + 1));
+		set_n(x, get_n(x) - 1);
+		db_block_write(db, l, get_num(l));
+	} else if (i < get_n(x) && get_n(r) < t) {
+		set_key_value(c, get_n(c), get_key(x, i), get_key_size(x, i), get_value(x, i), get_value_size(x, i));
+		set_n(c, get_n(c) + 1);
+		for (j = get_n(c); j < get_n(c) + get_n(r); j++)
+			set_key_value(c, j, get_key(r, j - get_n(c)), get_key_size(r, j - get_n(c)), get_value(r, j - get_n(c)), get_value_size(r, j - get_n(c)));
+		for (j = get_n(c); j <= get_n(c) + get_n(r); j++)
+			set_c(c, j, get_c(r, j - get_n(c)));
+		set_n(c, get_n(c) + get_n(r));
+		set_n(r, 0);
+		for (j = i; j < get_n(x) - 1; j++)
+			set_key_value(x, j, get_key(x, j + 1), get_key_size(x, j + 1), get_value(x, j + 1), get_value_size(x, j + 1));
+		for (j = i; j < get_n(x); j++)
+			set_c(x, j, get_c(x, j + 1));
+		set_n(x, get_n(x) - 1);
+		db_block_write(db, r, get_num(r));
+	}
+	if (!get_n(x)) {
+		//Получился нулевой корень
+		//Это может быть только корень, т.к. в ином случае 0 не получится
+		db_block_free(db, db->head.root_id);
+		db->head.root_id = get_num(c);
+		db_block_write(db, c, get_num(c));
+	} else {
+		db_block_write(db, x, get_num(x));
+		db_block_write(db, c, get_num(c));
+	}
+}
+
+
+//Внутренняя реализация удаления
+int db_may_del(struct DB *db, Block block, struct DBT *key)
+{
+	Block x = (Block) malloc(db->head.chunk_size);
+	memcpy(x, block, db->head.chunk_size);
+	int i, t = db->head.t;
+    if (get_leaf(x)) db_may_del_from_leaf_1(db, x, key);  /*1*/
+    else {
+		for (i = 0; i < get_n(block); i++) {
+			if (!db_strncmp(key->data, key->size, get_key(block, i), get_key_size(block, i))) {
+				Block y = (Block) malloc(db->head.chunk_size), z = (Block) malloc(db->head.chunk_size), dop = (Block) malloc(db->head.chunk_size);
+				db_block_read(db, y, get_c(x, i));
+				db_block_read(db, z, get_c(x, i + 1));
+				if (get_n(y) >= t) db_may_del_from_not_leaf_2a(db, x, y, dop, key, i);  /*2a*/
+				else if (get_n(z) >= t) db_may_del_from_not_leaf_2b(db, x, z, dop, key, i);  /*2b*/
+				else db_may_del_from_not_leaf_2c(db, x, y, z, dop, key, i);  /*2c*/
+				if (y) { free(y); y = NULL; }
+                if (z) { free(z); z = NULL; }
+                if (dop) { free(dop); dop = NULL; }
+                if (x) { free(x); x = NULL; }
+                return 0;
+			}
+		}
+		i = 0;
+		while (i < get_n(x) && db_strncmp(key->data, key->size, get_key(x, i), get_key_size(x, i)) > 0) i++;
+		Block c = (Block) malloc(db->head.chunk_size), l = (Block) malloc(db->head.chunk_size), r = (Block) malloc(db->head.chunk_size);
+		db_block_read(db, c, get_c(x, i));
+		if (i > 0) db_block_read(db, l, get_c(x, i - 1));
+		if (i < get_n(x)) db_block_read(db, r, get_c(x, i + 1));
+		if (get_n(c) <= t - 1) {
+			if (i > 0 && get_n(l) >= t) db_may_del_from_not_leaf_3a_l(db, x, c, l, key, i);   /*3a_l*/
+			else if (i < get_n(x) && get_n(r) >= t) db_may_del_from_not_leaf_3a_r(db, x, c, r, key, i);   /*3a_r*/
+			else db_may_del_from_not_leaf_3b(db, x, c, l, r, key, i);   /*3b*/
+		}
+	    db_may_del(db, c, key);  //      - Рекурсивно удаляем k из поддерева с корем ci[x];
+        if (c) { free(c); c = NULL; }
+        if (l) { free(l); l = NULL; }
+        if (r) { free(r); r = NULL; }
+        if (x) { free(x); x = NULL; }
+    }
+    return 0;
+}
+
 
 //Поиск
 int db_db_get(struct DB *db, struct DBT *key, struct DBT *data)
@@ -314,13 +564,8 @@ void b_tree_split_child(struct DB *db, Block x, int i, Block y)
 	set_leaf(z, get_leaf(y));
 	set_n(z, t - 1);
 	set_num(z, id);
-	for (j = 0; j < t - 1; j++){
-		set_key_size(z, j, get_key_size(y, j + t));
-		set_key(z, j, get_key(y, j + t), get_key_size(y, j + t));
-		set_value_size(z, j, get_value_size(y, j + t));
-		set_value(z, j, get_value(y, j + t), get_value_size(y, j + t));
-	}
-
+	for (j = 0; j < t - 1; j++)
+		set_key_value(z, j, get_key(y, j + t), get_key_size(y, j + t), get_value(y, j + t), get_value_size(y, j + t));
 	if (!get_leaf(y))
 		for (j = 0; j < t; j++)
 			set_c(z, j, get_c(y, j + t));
@@ -332,19 +577,10 @@ void b_tree_split_child(struct DB *db, Block x, int i, Block y)
 
 	set_c(x, i + 1, get_num(z));
 
-	for (j = get_n(x) - 1; j >=0, j >= i - 1; j--) {
-		set_key_size(x, j + 1, get_key_size(x, j));
-		set_key(x, j + 1, get_key(x, j), get_key_size(x, j));
-		set_value_size(x, j + 1, get_value_size(x, j));
-		set_value(x, j + 1, get_value(x, j), get_value_size(x, j));
-	}
-	set_key_size(x, i, get_key_size(y, t - 1));
-	set_key(x, i, get_key(y, t - 1), get_key_size(y, t - 1));
-	set_value_size(x, i, get_value_size(y, t - 1));
-	set_value(x, i, get_value(y, t - 1), get_value_size(y, t - 1));
-
+	for (j = get_n(x) - 1; j >=0, j >= i - 1; j--)
+		set_key_value(x, j + 1, get_key(x, j), get_key_size(x, j), get_value(x, j), get_value_size(x, j));
+	set_key_value(x, i, get_key(y, t - 1), get_key_size(y, t - 1), get_value(y, t - 1), get_value_size(y, t - 1));
 	set_n(x, get_n(x) + 1);
-
 	db_block_write(db, y, get_num(y));
 	db_block_write(db, z, get_num(z));
 	db_block_write(db, x, get_num(x));
@@ -468,9 +704,11 @@ void print_block(struct DB *db, int id)
 		printf("(key = ");
 		for (j = 0; j < key_size; j++)
 			printf("%c", key[j]);
+		//printf(", key_size = %d ", get_key_size(block, i));
 		printf(", value = ");
 		for (j = 0; j < value_size; j++)
 			printf("%c", value[j]);
+		//printf(", value_size = %d ", get_value_size(block, i));
 		printf(", cl = %d, cr = %d) ", get_c(block, i), get_c(block, i + 1));
 	}
 	printf("\n\n");

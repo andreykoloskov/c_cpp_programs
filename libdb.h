@@ -102,6 +102,14 @@ void db_block_write(struct DB *db, Block block, int id);
 int db_block_alloc(struct DB *db);
 void db_block_free(struct DB *db, int id);
 
+int db_may_del(struct DB *db, Block block, struct DBT *key);
+void db_may_del_from_leaf_1(struct DB *db, Block x, struct DBT *key);
+void db_may_del_from_not_leaf_2a(struct DB *db, Block x, Block y, Block dop, struct DBT *key, int i);
+void db_may_del_from_not_leaf_2b(struct DB *db, Block x, Block z, Block dop, struct DBT *key, int i);
+void db_may_del_from_not_leaf_2c(struct DB *db, Block x, Block y, Block z, Block dop, struct DBT *key, int i);
+void db_may_del_from_not_leaf_3a_l(struct DB *db, Block x, Block c, Block l, struct DBT *key, int i);
+void db_may_del_from_not_leaf_3a_r(struct DB *db, Block x, Block c, Block r, struct DBT *key, int i);
+void db_may_del_from_not_leaf_3b(struct DB *db, Block x, Block c, Block l, Block r, struct DBT *key, int i);
 int db_my_get(struct DB *db, Block block, struct DBT *key);
 void b_tree_split_child(struct DB *db, Block x, int i, Block y);
 void b_tree_insert_nonfull(struct DB *db, Block x, struct DBT *key, struct DBT *data);
