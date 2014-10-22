@@ -115,7 +115,7 @@ inline void set_key_value(Block block, int i, void *key_data, int key_size, void
 /////////////////////////////////////////////
 
 //Создание базы
-struct DB *dbcreate(const char *file, const struct DBC conf)
+struct DB *dbcreate(char *file, const struct DBC conf)
 {
 	//Проверка корректности метаданных
 	if (conf.db_size > 512 * 1024 * 1024) return NULL;
@@ -186,7 +186,7 @@ struct DB *dbcreate(const char *file, const struct DBC conf)
 }
 
 //Открытие базы
-struct DB *dbopen  (const char *file, const struct DBC conf)
+struct DB *dbopen  (char *file, const struct DBC conf)
 {
 	struct DB *db = (struct DB *) malloc(sizeof(*db));
 	//Функции
@@ -247,6 +247,9 @@ void db_may_del_from_leaf_1(struct DB *db, Block x, struct DBT *key)
 			db_block_write(db, x, get_num(x));
 		}
 	}
+	//Если элементов в базе нет
+	if (!get_n(x))
+		db_block_free_root(db, get_num(x));
 }
 
 //2. Если: x - внутренний узел, k принадлежит x =>
@@ -295,15 +298,15 @@ void db_may_del_from_not_leaf_2b(struct DB *db, Block x, Block z, Block dop, str
 //      - Из x удаляем k и указатель на z;
 //      - Если x - корень, и в нем не остается ключей =>
 //          -- y - новый корень;
-//      - Освобождаем z (видимо на место z надо записать последний блок в файле);
+//      - Освобождаем z;
 //      - Рекурсиво удаляем k из y;
 void db_may_del_from_not_leaf_2c(struct DB *db, Block x, Block y, Block z, Block dop, struct DBT *key, int i)
 {
 	int j;
+	struct DBT value = {0, 0};
+	db_db_get(db, key, &value);
 	set_n(y, get_n(y) + 1);
-	struct DBT *value;
-	db_db_get(db, key, value);
-	set_key_value(y, get_n(y) - 1, key->data, key->size, value->data, value->size);
+	set_key_value(y, get_n(y) - 1, key->data, key->size, value.data, value.size);
 	for (j = get_n(y); j < get_n(y) + get_n(z); j++)
 		set_key_value(y, j, get_key(z, j - get_n(y)), get_key_size(z, j - get_n(y)), get_value(z, j - get_n(y)), get_value_size(z, j - get_n(y)));
 	for (j = get_n(y); j <= get_n(y) + get_n(z); j++)
@@ -327,6 +330,7 @@ void db_may_del_from_not_leaf_2c(struct DB *db, Block x, Block y, Block z, Block
 		db_block_write(db, y, get_num(y));
 	}
 	db_block_write(db, z, get_num(z));
+	db_block_free(db, get_num(z));
 	db_may_del(db, y, key);
 }
 
@@ -347,7 +351,7 @@ void db_may_del_from_not_leaf_3a_l(struct DB *db, Block x, Block c, Block l, str
 	set_key_value(c, 0, get_key(x, i - 1), get_key_size(x, i - 1), get_value(x, i - 1), get_value_size(x, i - 1));
 	set_c(c, 0, get_c(l, get_n(l)));
 	set_key_value(x, i - 1, get_key(l, get_n(l) - 1), get_key_size(l, get_n(l) - 1), get_value(l, get_n(l) - 1), get_value_size(l, get_n(l) - 1));
-	set_n(l, get_n(l - 1));
+	set_n(l, get_n(l) - 1);
 	db_block_write(db, l, get_num(l));
 	db_block_write(db, x, get_num(x));
 	db_block_write(db, c, get_num(c));
@@ -403,6 +407,7 @@ void db_may_del_from_not_leaf_3b(struct DB *db, Block x, Block c, Block l, Block
 			set_c(x, j, get_c(x, j + 1));
 		set_n(x, get_n(x) - 1);
 		db_block_write(db, l, get_num(l));
+		db_block_free(db, get_num(l));
 	} else if (i < get_n(x) && get_n(r) < t) {
 		set_key_value(c, get_n(c), get_key(x, i), get_key_size(x, i), get_value(x, i), get_value_size(x, i));
 		set_n(c, get_n(c) + 1);
@@ -414,10 +419,11 @@ void db_may_del_from_not_leaf_3b(struct DB *db, Block x, Block c, Block l, Block
 		set_n(r, 0);
 		for (j = i; j < get_n(x) - 1; j++)
 			set_key_value(x, j, get_key(x, j + 1), get_key_size(x, j + 1), get_value(x, j + 1), get_value_size(x, j + 1));
-		for (j = i; j < get_n(x); j++)
+		for (j = i + 1; j < get_n(x); j++)
 			set_c(x, j, get_c(x, j + 1));
 		set_n(x, get_n(x) - 1);
 		db_block_write(db, r, get_num(r));
+		db_block_free(db, get_num(r));
 	}
 	if (!get_n(x)) {
 		//Получился нулевой корень
@@ -440,18 +446,20 @@ int db_may_del(struct DB *db, Block block, struct DBT *key)
 	int i, t = db->head.t;
     if (get_leaf(x)) db_may_del_from_leaf_1(db, x, key);  /*1*/
     else {
-		for (i = 0; i < get_n(block); i++) {
-			if (!db_strncmp(key->data, key->size, get_key(block, i), get_key_size(block, i))) {
+		for (i = 0; i < get_n(x); i++) {
+			if (!db_strncmp(key->data, key->size, get_key(x, i), get_key_size(x, i))) {
 				Block y = (Block) malloc(db->head.chunk_size), z = (Block) malloc(db->head.chunk_size), dop = (Block) malloc(db->head.chunk_size);
 				db_block_read(db, y, get_c(x, i));
 				db_block_read(db, z, get_c(x, i + 1));
 				if (get_n(y) >= t) db_may_del_from_not_leaf_2a(db, x, y, dop, key, i);  /*2a*/
 				else if (get_n(z) >= t) db_may_del_from_not_leaf_2b(db, x, z, dop, key, i);  /*2b*/
 				else db_may_del_from_not_leaf_2c(db, x, y, z, dop, key, i);  /*2c*/
+
 				if (y) { free(y); y = NULL; }
                 if (z) { free(z); z = NULL; }
                 if (dop) { free(dop); dop = NULL; }
                 if (x) { free(x); x = NULL; }
+
                 return 0;
 			}
 		}
@@ -577,7 +585,7 @@ void b_tree_split_child(struct DB *db, Block x, int i, Block y)
 
 	set_c(x, i + 1, get_num(z));
 
-	for (j = get_n(x) - 1; j >=0, j >= i - 1; j--)
+	for (j = get_n(x) - 1; (j >= 0) && (j >= i - 1); j--)
 		set_key_value(x, j + 1, get_key(x, j), get_key_size(x, j), get_value(x, j), get_value_size(x, j));
 	set_key_value(x, i, get_key(y, t - 1), get_key_size(y, t - 1), get_value(y, t - 1), get_value_size(y, t - 1));
 	set_n(x, get_n(x) + 1);
@@ -591,7 +599,6 @@ void b_tree_insert_nonfull(struct DB *db, Block x, struct DBT *key, struct DBT *
 {
 	int i = get_n(x);
 	int t = db->head.t;
-	int id;
 	if (get_leaf(x)) {
 		while (i > 0 && db_strncmp(key->data, key->size, get_key(x, i - 1), get_key_size(x, i - 1)) < 0) {
 			set_key_size(x, i, get_key_size(x, i - 1));
@@ -618,6 +625,7 @@ void b_tree_insert_nonfull(struct DB *db, Block x, struct DBT *key, struct DBT *
 			if (db_strncmp(key->data, key->size, get_key(x, i),  get_key_size(x, i)) > 0)
 				i++;
 		}
+		db_block_read(db, block, get_c(x, i));
 		b_tree_insert_nonfull(db, block, key, data);
 		if (block) free(block);
 	}
@@ -646,8 +654,7 @@ void db_block_write(struct DB *db, Block block, int id)
 int db_block_alloc(struct DB *db)
 {
 	int i, j;
-	unsigned char a;
-	for (i = 0; i < db->head.data_count / 8, db->block_stat[i] == 0xff; ++i);
+	for (i = 0; (i < db->head.data_count / 8) && (db->block_stat[i] == 0xff); ++i);
 
 	if (i == db->head.data_count / 8)
 		return -1;
@@ -674,11 +681,23 @@ void db_block_free(struct DB *db, int id)
 	fwrite(db->block_stat, db->head.stat_count * db->head.chunk_size, 1, db->fd);
 }
 
+void db_block_free_root(struct DB *db, int id)
+{
+	db_block_free(db, id);
+	if (db->head.root_id == id) {
+		set_n(db->root, 0);
+		set_leaf(db->root, 1);
+		set_num(db->root, 0);
+		db_block_write(db, db->root, 0);
+		int id = db_block_alloc(db);
+		db->head.root_id = id;
+	}
+}
 
 void print_db(struct DB *db)
 {
 	int i, j;
-	printf("db_size = %d, chunk_size = %d,\n", db->head.db_size, db->head.chunk_size);
+	printf("db_size = %d, chunk_size = %d,\n", (int) db->head.db_size, (int) db->head.chunk_size);
 	printf("stat_offset = %d, stat_count = %d, data_offset = %d, data_count = %d,\n", db->head.stat_offset, db->head.stat_count, db->head.data_offset, db->head.data_count);
 	printf("root_id = %d, head.t = %d, root_n = %d, root_leaf = %d, root_num = %d\n\n", db->head.root_id, db->head.t, ((struct NodeHead *)db->root)->n, ((struct NodeHead *)db->root)->leaf, ((struct NodeHead *)db->root)->num);
 
@@ -741,6 +760,7 @@ int db_get(struct DB *db, void *key, size_t key_len, void **val, size_t *val_len
 	int rc = db->get(db, &keyt, &valt);
 	*val = valt.data;
 	*val_len = valt.size;
+
 	return rc;
 }
 

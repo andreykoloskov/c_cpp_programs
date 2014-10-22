@@ -2,8 +2,8 @@
 
 /* check `man dbopen` */
 
-#define KEY_SIZE 100
-#define VALUE_SIZE 100
+#define KEY_SIZE 300
+#define VALUE_SIZE 300
 
 typedef unsigned char * Block;
 
@@ -89,8 +89,8 @@ struct DB {
 	void (*block_free)(struct DB *db, int id); 							//Освобождение блока
 }; /* Need for supporting multiple backends (HASH/BTREE) */
 
-struct DB *dbcreate(const char *file, const struct DBC conf);
-struct DB *dbopen  (const char *file, const struct DBC conf); /* Metadata in file */
+struct DB *dbcreate(char *file, struct DBC conf);
+struct DB *dbopen  (char *file, struct DBC conf); /* Metadata in file */
 
 int db_db_close(struct DB *db);
 int db_db_del(struct DB *db, struct DBT *key);
@@ -101,6 +101,7 @@ void db_block_read(struct DB *db, Block block, int id);
 void db_block_write(struct DB *db, Block block, int id);
 int db_block_alloc(struct DB *db);
 void db_block_free(struct DB *db, int id);
+void db_block_free_root(struct DB *db, int id);
 
 int db_may_del(struct DB *db, Block block, struct DBT *key);
 void db_may_del_from_leaf_1(struct DB *db, Block x, struct DBT *key);
