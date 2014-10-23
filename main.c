@@ -368,6 +368,18 @@ main(int argc, char *argv[])
 	if (db_get(db, key.data, 2, &(data.data), &sz) != -1)
 		printf("%s %d %s %d\n", key.data, key.size, data.data, data.size);
 
+
+	data.data = malloc(VALUE_SIZE);
+	for (i = 0; i < 100000; i++) {
+		db_put(db, &i, sizeof(i), &i, sizeof(i));
+	}
+
+	for (i = 0; i < 100000; i++) {
+		db_del(db, &i, sizeof(i));
+	}
+
+
+
 	print_db(db);
 
 

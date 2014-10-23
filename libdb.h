@@ -2,8 +2,8 @@
 
 /* check `man dbopen` */
 
-#define KEY_SIZE 300
-#define VALUE_SIZE 300
+#define KEY_SIZE 100
+#define VALUE_SIZE 100
 
 typedef unsigned char * Block;
 
