@@ -1,3 +1,8 @@
+#ifndef LIBDB_H_INCLUDED
+#define LIBDB_H_INCLUDED
+
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* check `man dbopen` */
@@ -5,6 +10,7 @@
 #define VALUE_SIZE 100
 
 typedef unsigned char * Block;
+struct DB;
 
 //Мета информация базы данных
 struct DBC
@@ -20,8 +26,7 @@ struct DBC
 	size_t chunk_size;
 	/* Maximum memory size */
 	/* 16MB by default */
-	//Пока не нужен
-	//size_t mem_size;
+	size_t mem_size;
 };
 
 //Данные с размером
@@ -38,8 +43,8 @@ struct Head
 	size_t db_size;
 	//Размер блока в B дереве
 	size_t chunk_size;
-	//Размер памяти (пока не нужен)
-	//size_t mem_size;
+	//Размер памяти
+	size_t mem_size;
 	//Смещение начала области статистики
 	//(в блоках)
 	int stat_offset;
@@ -74,6 +79,41 @@ struct NodeData
 	int c;
 };
 
+//Данные о блоке кэша
+struct Cash_element
+{
+	//Номер блока данных
+	int num;
+	//Использование
+	int used;
+	//Возраст
+	int age;
+};
+
+struct Cash
+{
+	//Количество элементов
+	int size;
+	//Массив описаний элементов кэша
+	struct Cash_element *cash_elements;
+	//Массив элементов кэша
+	Block block;
+
+	//Поиск блока
+	int (* cash_search)(struct DB *db, int id);
+	//Удаление блока из кэша
+	void (* cash_delete)(struct DB *db, int id);
+	//Чтение блока
+	void (* cash_read)(struct DB *db, Block block, int id);
+	//Запись блока
+	void (* cash_write)(struct DB *db, Block block, int id);
+};
+
+int db_cash_search(struct DB *db, int id);
+void db_cash_delete(struct DB *db, int id);
+void db_cash_read(struct DB  *db, Block block, int id);
+void db_cash_write(struct DB *db, Block block, int id);
+
 struct DB {
 	/* Public API */
 	/* Returns 0 on OK, -1 on Error */
@@ -100,6 +140,8 @@ struct DB {
 	Block block_stat;
 	//Головной элемент B дерева базы данных
 	Block root;
+	//Кэш
+	struct Cash cash;
 
 	//Чтение блока
 	void (*block_read)(struct DB *db, Block block, int id);
@@ -156,3 +198,5 @@ void b_tree_ins_nf(struct DB *db, Block x, struct DBT *key, struct DBT *data);
 
 void print_db(struct DB *db);
 void print_block(struct DB *db, int id);
+
+#endif

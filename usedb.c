@@ -1,6 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "libdb.h"
 
 //Создание базы
@@ -12,6 +9,8 @@ struct DB *dbcreate(char *file, const struct DBC conf)
 	if (conf.chunk_size > 4 * 1024)
 		return NULL;
 	if (conf.chunk_size && conf.db_size % conf.chunk_size)
+		return NULL;
+	if (conf.mem_size > 16 * 1024 * 1024)
 		return NULL;
 
 	unsigned char end_file;
@@ -28,10 +27,14 @@ struct DB *dbcreate(char *file, const struct DBC conf)
 	else
 		db->head.db_size = conf.db_size;
 
-	if (conf.chunk_size < 512)
+	if (conf.chunk_size < 4 * 1024)
 		db->head.chunk_size = 4 * 1024;
 	else
 		db->head.chunk_size = conf.chunk_size;
+	if (conf.mem_size < 4 * 1024)
+		db->head.mem_size = 16 * 1024 * 1024;
+	else
+		db->head.mem_size = conf.mem_size;
 
 	//Смещение области статистики (в блоках)
 	db->head.stat_offset = 1;
@@ -117,6 +120,19 @@ struct DB *dbopen (char *file, const struct DBC conf)
 	fseek(db->fd, offset * db->head.chunk_size, SEEK_SET);
 	fread(db->root, db->head.chunk_size, 1, db->fd);
 
+	//Кэш
+	db->cash.cash_read = db_cash_read;
+	db->cash.cash_write = db_cash_write;
+	db->cash.cash_search = db_cash_search;
+	db->cash.cash_delete = db_cash_delete;
+	//Статистика кэша
+	db->cash.size = db->head.mem_size / db->head.chunk_size;
+	sz = db->cash.size * sizeof(struct Cash_element);
+	db->cash.cash_elements = (struct Cash_element *) malloc(sz);
+	//Массив блоков кэша
+	sz = db->cash.size * db->head.chunk_size;
+	db->cash.block = (Block) malloc(sz);
+
 	return db;
 }
 
@@ -137,6 +153,10 @@ int close(struct DB *db)
 		free(db->block_stat);
 	if (db->root)
 		free(db->root);
+	if (db->cash.cash_elements)
+		free(db->cash.cash_elements);
+	if (db->cash.block)
+		free(db->cash.block);
 	if (db)
 		free(db);
 

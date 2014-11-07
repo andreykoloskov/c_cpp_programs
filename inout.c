@@ -1,29 +1,13 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "libdb.h"
 
 void db_block_read(struct DB *db, Block block, int id)
 {
-	int offset = db->head.data_offset + id;
-	fseek(db->fd, offset * db->head.chunk_size, SEEK_SET);
-	fread(block, db->head.chunk_size, 1, db->fd);
+	db->cash.cash_read(db, block, id);
 }
 
 void db_block_write(struct DB *db, Block block, int id)
 {
-	int offset = db->head.data_offset + id;
-	fseek(db->fd, offset * db->head.chunk_size, SEEK_SET);
-	fwrite(block, db->head.chunk_size, 1, db->fd);
-	if (db->head.root_id == get_num(block)) {
-		int offset2 = db->head.data_offset + db->head.root_id;
-		memcpy(db->root, block, db->head.chunk_size);
-		int offset = offset2 * db->head.chunk_size;
-		fseek(db->fd, offset, SEEK_SET);
-		fwrite(db->root, db->head.chunk_size, 1, db->fd);
-		fseek(db->fd, 0, SEEK_SET);
-		fwrite(&db->head, sizeof(db->head), 1, db->fd);
-	}
+	db->cash.cash_write(db, block, id);
 }
 
 int db_block_alloc(struct DB *db)
@@ -58,6 +42,7 @@ void db_block_free(struct DB *db, int id)
 	fseek(db->fd, db->head.stat_offset * db->head.chunk_size, SEEK_SET);
 	int max = db->head.stat_count * db->head.chunk_size;
 	fwrite(db->block_stat, max, 1, db->fd);
+	db->cash.cash_delete(db, id);
 }
 
 void db_block_free_root(struct DB *db, int id)

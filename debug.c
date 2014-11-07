@@ -1,6 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "libdb.h"
 
 void print_db(struct DB *db)
@@ -41,10 +38,20 @@ void print_block(struct DB *db, int id)
 		printf(", value = ");
 		for (j = 0; j < value.size; j++)
 			printf("%c", ((unsigned char *) value.data)[j]);
-		printf(", cl = %d) ", get_c(block, i));
+		printf(", cl = %d ", get_c(block, i));
 		printf(", cr = %d) ", get_c(block, i + 1));
 	}
 	printf("\n\n");
 	if (block)
 		free(block);
+}
+
+void print_cash(struct DB *db)
+{
+	int i;
+	printf("cash: ");
+	for (i = 0; i < db->cash.size; i++)
+		if (db->cash.cash_elements[i].used)
+			printf("%d ", db->cash.cash_elements[i].num);
+	printf("\n\n");
 }
