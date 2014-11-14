@@ -45,13 +45,3 @@ void print_block(struct DB *db, int id)
 	if (block)
 		free(block);
 }
-
-void print_cash(struct DB *db)
-{
-	int i;
-	printf("cash: ");
-	for (i = 0; i < db->cash.size; i++)
-		if (db->cash.cash_elements[i].used)
-			printf("%d ", db->cash.cash_elements[i].num);
-	printf("\n\n");
-}

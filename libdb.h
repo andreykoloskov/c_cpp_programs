@@ -79,28 +79,63 @@ struct NodeData
 	int c;
 };
 
-//Данные о блоке кэша
-struct Cash_element
+//////////////////////////////////////////////
+/* avl_tree_tree for cash */
+typedef struct Node Node;
+struct Node
 {
-	//Номер блока данных
-	int num;
-	//Использование
-	int used;
-	//Возраст
-	int age;
+    int key;
+    int data;
+    Node *left;
+    Node *right;
+    int balance;
+    int height;
+};
+//Вставка ключа key в дерево с корнем t
+Node *insert(Node *t, int key, int data);
+//Поиск заданного ключа
+Node *find(Node *t, int key);
+//Удаление ключа key из дерева t
+Node *remove_tree(Node *t, int key);
+//Освобождение памяти
+Node* tfree(Node *root);
+//Вывод дерева
+void print_tree(Node *root);
+
+///////////////////////////////////////////////
+
+//Данные о блоке кэша
+typedef struct Age Age;
+struct Age
+{
+	int cash_id;
+	Age *prev;
+	Age *next;
 };
 
 struct Cash
 {
 	//Количество элементов
 	int size;
-	//Массив описаний элементов кэша
-	struct Cash_element *cash_elements;
+	//Массив использования элементов
+	int *use;
+	//Массив id блоков
+	int *num;
+	//Массив ссылок на элементы возрастов
+	Age **links;
+	//Самый молодой элемент
+	Age *start;
+	//Самый старый элемент
+	Age *finish;
+	//Дерево поиска элементов кэша
+	Node *rt;
 	//Массив элементов кэша
 	Block block;
 
 	//Поиск блока
-	int (* cash_search)(struct DB *db, int id);
+	int (* cash_search)(struct DB *db, int id, Node *nd);
+	//Вставка блока в кэш
+	Node * (* cash_insert)(struct DB *db, int key, int data);
 	//Удаление блока из кэша
 	void (* cash_delete)(struct DB *db, int id);
 	//Чтение блока
@@ -109,10 +144,17 @@ struct Cash
 	void (* cash_write)(struct DB *db, Block block, int id);
 };
 
-int db_cash_search(struct DB *db, int id);
+int db_cash_search(struct DB *db, int id, Node *nd);
+Node *db_cash_insert(struct DB *db, int key, int data);
 void db_cash_delete(struct DB *db, int id);
 void db_cash_read(struct DB  *db, Block block, int id);
 void db_cash_write(struct DB *db, Block block, int id);
+//Печать использования кэша
+void print_use(struct DB *db);
+//Печать кэша
+void print_cash(struct DB *db);
+
+/////////////////////////////////////////////////////////////
 
 struct DB {
 	/* Public API */

@@ -124,11 +124,39 @@ struct DB *dbopen (char *file, const struct DBC conf)
 	db->cash.cash_read = db_cash_read;
 	db->cash.cash_write = db_cash_write;
 	db->cash.cash_search = db_cash_search;
+	db->cash.cash_insert = db_cash_insert;
 	db->cash.cash_delete = db_cash_delete;
 	//Статистика кэша
 	db->cash.size = db->head.mem_size / db->head.chunk_size;
-	sz = db->cash.size * sizeof(struct Cash_element);
-	db->cash.cash_elements = (struct Cash_element *) malloc(sz);
+	db->cash.rt = NULL;
+	int i;
+	db->cash.use = (int *) malloc(db->cash.size * sizeof(int));
+	for (i = 0; i < db->cash.size; i++)
+		db->cash.use[i] = 0;
+
+	db->cash.num = (int *) malloc(db->cash.size * sizeof(int));
+	for (i = 0; i < db->cash.size; i++)
+		db->cash.num[i] = -1;
+
+	db->cash.links = (Age **) malloc(db->cash.size * sizeof(Age *));
+	Age *age = (Age *) malloc(sizeof(Age));
+	Age *age2;
+	age->cash_id = 0;
+	age->prev = NULL;
+	age->next = NULL;
+	db->cash.start = age;
+	db->cash.links[0] = age;
+	for (i = 1; i < db->cash.size; i++) {
+		Age *elem = (Age *) malloc(sizeof(Age));
+		elem->cash_id = i;
+		elem->prev = age;
+		elem->next = NULL;
+		age->next = elem;
+		age = age->next;
+		db->cash.links[i] = age;
+	}
+	db->cash.finish = age;
+
 	//Массив блоков кэша
 	sz = db->cash.size * db->head.chunk_size;
 	db->cash.block = (Block) malloc(sz);
@@ -153,10 +181,22 @@ int close(struct DB *db)
 		free(db->block_stat);
 	if (db->root)
 		free(db->root);
-	if (db->cash.cash_elements)
-		free(db->cash.cash_elements);
 	if (db->cash.block)
 		free(db->cash.block);
+	if (db->cash.use)
+		free(db->cash.use);
+	if (db->cash.num)
+		free(db->cash.num);
+
+	int i;
+	for (i = 0; i < db->cash.size; i++)
+		if (db->cash.links[i])
+			free(db->cash.links[i]);
+
+	if (db->cash.links)
+		free(db->cash.links);
+	if (db->cash.rt)
+		tfree(db->cash.rt);
 	if (db)
 		free(db);
 

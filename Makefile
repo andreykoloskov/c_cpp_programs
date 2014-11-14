@@ -1,4 +1,4 @@
-SOURCES=lowlevel.c usedb.c del.c get.c put.c inout.c debug.c cash.c
+SOURCES=lowlevel.c usedb.c del.c get.c put.c inout.c debug.c cash.c avl_tree.c
 HEADERS=libdb.h
 
 OBJECTS=$(SOURCES:.c=.o)
@@ -32,6 +32,8 @@ debug.o: debug.c $(HEADERS)
 cash.o: cash.c $(HEADERS)
 	gcc -g -fPIC -c cash.c
 
+avl_tree.o: avl_tree.c $(HEADERS)
+	gcc -g -fPIC -c avl_tree.c
 
 prog: main
 

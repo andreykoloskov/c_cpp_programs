@@ -23,11 +23,12 @@ main(int argc, char *argv[])
 	strcpy(key.data, "k18"); strcpy(data.data, "v18");
 	db_put(db, key.data, 3, data.data, 3);
 
-
-	strcpy(key.data, "k0"); strcpy(data.data, "v0");
+    strcpy(key.data, "k0"); strcpy(data.data, "v0");
 	db_put(db, key.data, 2, data.data, 2);
+
 	strcpy(key.data, "k15"); strcpy(data.data, "v15");
 	db_put(db, key.data, 3, data.data, 3);
+
 	strcpy(key.data, "k12"); strcpy(data.data, "v12");
 	db_put(db, key.data, 3, data.data, 3);
 	strcpy(key.data, "k1"); strcpy(data.data, "v1");
@@ -40,6 +41,7 @@ main(int argc, char *argv[])
 	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "k5"); strcpy(data.data, "v5");
 	db_put(db, key.data, 2, data.data, 2);
+
 	strcpy(key.data, "k6"); strcpy(data.data, "v6");
 	db_put(db, key.data, 2, data.data, 2);
 	strcpy(key.data, "k7"); strcpy(data.data, "v7");
@@ -56,10 +58,13 @@ main(int argc, char *argv[])
 	db_put(db, key.data, 3, data.data, 3);
 	strcpy(key.data, "k14"); strcpy(data.data, "v14");
 	db_put(db, key.data, 3, data.data, 3);
+
 	strcpy(key.data, "k16"); strcpy(data.data, "v16");
 	db_put(db, key.data, 3, data.data, 3);
+
 	strcpy(key.data, "k17"); strcpy(data.data, "v17");
 	db_put(db, key.data, 3, data.data, 3);
+
 	strcpy(key.data, "k19"); strcpy(data.data, "v19");
 	db_put(db, key.data, 3, data.data, 3);
 	strcpy(key.data, "k20"); strcpy(data.data, "v20");
@@ -144,6 +149,7 @@ main(int argc, char *argv[])
 	strcpy(key.data, "k17");
 	if (db_get(db, key.data, 3, &(data.data), &sz) != -1)
 		printf("%c%c %d %c%c %d\n", ((char *)(key.data))[0], ((char *)(key.data))[1], 3, ((char *)(data.data))[0], ((char *)(data.data))[1], sz);
+
 	if (data.data) free(data.data);
 	strcpy(key.data, "k11");
 	if (db_get(db, key.data, 3, &(data.data), &sz) != -1)
@@ -157,8 +163,8 @@ main(int argc, char *argv[])
 	if (db_get(db, key.data, 4, &(data.data), &sz) != -1)
 		printf("%c%c %d %c%c %d\n", ((char *)(key.data))[0], ((char *)(key.data))[1], 4, ((char *)(data.data))[0], ((char *)(data.data))[1], sz);
 
+
 	print_db(db);
-	print_cash(db);
 
 
 	strcpy(key.data, "k18");
@@ -370,16 +376,26 @@ main(int argc, char *argv[])
 		printf("%s %d %s %d\n", key.data, key.size, data.data, data.size);
 
 
+
 	data.data = malloc(VALUE_SIZE);
 	for (i = 0; i < 100000; i++) {
 		db_put(db, &i, sizeof(i), &i, sizeof(i));
 	}
 
+
 	for (i = 0; i < 100000; i++) {
 		db_del(db, &i, sizeof(i));
 	}
 
-
+printf("\n");
+print_use(db);
+printf("\n\n");
+print_tree(db->cash.rt);
+printf("\n\n");
+print_cash(db);
+printf("\n\n");
+/*
+*/
 	print_db(db);
 
 
