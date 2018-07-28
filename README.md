@@ -7,3 +7,4 @@
 2. [socets technosphere](socets/README.md)
 3. [shell](shell/README.md)
 4. [cpp](cpp/README.md)
+5. [cpp](cpp_yandex/README.md)
