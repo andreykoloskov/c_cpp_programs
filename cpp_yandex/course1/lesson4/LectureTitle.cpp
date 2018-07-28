@@ -1,4 +1,3 @@
-/*
 #include <iostream>
 #include <string>
 
@@ -70,4 +69,3 @@ LectureTitle title(
     Course("White belt")
 );
 }
-*/

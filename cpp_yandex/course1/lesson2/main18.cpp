@@ -1,4 +1,3 @@
-/*
 #include <iostream>
 #include <string>
 #include <set>
@@ -34,4 +33,3 @@ main()
 
 	return 0;
 }
-*/

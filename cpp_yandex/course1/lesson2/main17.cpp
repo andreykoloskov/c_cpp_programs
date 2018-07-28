@@ -1,4 +1,3 @@
-/*
 #include <iostream>
 #include <set>
 #include <map>
@@ -44,4 +43,3 @@ main()
 
 	return 0;
 }
-*/

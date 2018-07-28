@@ -1,4 +1,3 @@
-/*
 #include <iostream>
 #include <set>
 
@@ -20,4 +19,3 @@ main()
 
 	return 0;
 }
-*/

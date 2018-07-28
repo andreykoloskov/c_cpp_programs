@@ -1,4 +1,3 @@
-/*
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -24,4 +23,3 @@ int main() {
         cout << endl;
     }
 }
-*/

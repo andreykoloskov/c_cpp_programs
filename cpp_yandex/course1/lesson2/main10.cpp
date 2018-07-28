@@ -1,6 +1,5 @@
 // https://gcc.godbolt.org
 
-/*
 #include <iostream>
 #include <vector>
 #include <string>
@@ -48,4 +47,3 @@ main()
 
 	return 0;
 }
-*/

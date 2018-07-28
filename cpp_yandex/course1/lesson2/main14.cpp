@@ -1,4 +1,3 @@
-/*
 #include <iostream>
 #include <string>
 #include <vector>
@@ -31,4 +30,3 @@ main()
 
 	return 0;
 }
-*/

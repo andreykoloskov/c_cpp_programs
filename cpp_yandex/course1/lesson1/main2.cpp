@@ -1,4 +1,3 @@
-/*
 #include <iostream>
 #include <string>
 #include <vector>
@@ -14,4 +13,3 @@ int main()
 	cout << v[0];
 	return 0;
 }
-*/

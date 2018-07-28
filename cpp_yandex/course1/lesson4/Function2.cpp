@@ -1,4 +1,3 @@
-/*
 #include <iostream>
 #include <string>
 #include <vector>
@@ -107,4 +106,3 @@ int main() {
     cout << ComputeQualityByWeight(params, image, 52) << endl;
     return 0;
 }
-*/

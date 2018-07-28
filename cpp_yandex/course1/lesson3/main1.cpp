@@ -1,4 +1,3 @@
-/*
 #include <iostream>
 #include <algorithm>
 #include <vector>
@@ -23,4 +22,3 @@ main()
 
 	return 0;
 }
-*/
