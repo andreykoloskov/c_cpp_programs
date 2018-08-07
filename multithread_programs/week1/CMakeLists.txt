@@ -3,4 +3,4 @@ project(week1)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(week1 StringPointer.cpp)
+add_executable(week1 SmallAllocator.cpp)
