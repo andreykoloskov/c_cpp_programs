@@ -2,6 +2,7 @@
 #define ALLOCATOR_ERROR
 
 #include <stdexcept>
+#include <string>
 
 enum class AllocErrorType {
     InvalidFree,
