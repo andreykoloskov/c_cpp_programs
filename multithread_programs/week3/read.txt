@@ -1,0 +1,12 @@
+Конспект "libevent".
+
+
+Сайт библиотеки: http://libevent.org/
+Небольшой учебник: http://www.wangafu.net/~nickm/libevent-book/
+Полная документация (Doxygen): http://www.wangafu.net/~nickm/libevent-2.0/doxygen/html/
+
+Статья "Библиотека libevent для асинхронного неблокирующего ввода/вывода" (4 части):
+https://www.ibm.com/developerworks/ru/library/l-Libevent1/
+﻿https://www.ibm.com/developerworks/ru/library/l-Libevent2/﻿
+https://www.ibm.com/developerworks/ru/library/l-Libevent3/
+https://www.ibm.com/developerworks/ru/library/l-Libevent4/﻿
