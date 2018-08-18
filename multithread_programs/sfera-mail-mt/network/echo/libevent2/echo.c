@@ -36,7 +36,7 @@ static void echo_event_cb(struct bufferevents *bev, short events, void *ctx) {
     }
 }
 
-static void accept_conn_cb(struct avconnlistener *listener,
+static void accept_conn_cb(struct evconnlistener *listener,
         evutil_socket_t fd,
         struct sockaddr *address,
         int socklen,
