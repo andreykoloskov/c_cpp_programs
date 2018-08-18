@@ -1,4 +1,4 @@
-# echo -n 'test' | nc -U /tmp/echo.sock
+// echo -n 'test' | nc -U /tmp/echo.sock
 
 #include <event2/listener.h>
 #include <event2/bufferevent.h>
