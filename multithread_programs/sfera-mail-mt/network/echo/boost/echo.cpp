@@ -1,3 +1,5 @@
+//g++ -o echo echo.cpp -I /home/andrey/boost_1_68_0/ -lpthread -lboost_system -lboost_thread
+
 #include <cstdlib>
 #include <iostream>
 #include <boost/bind.hpp>
