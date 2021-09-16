@@ -15,7 +15,7 @@ int main()
 		n = n / 2;
 	}
 
-	for (int i = v.size() - 1; i >= 0; i--)
+	for (long long i = v.size() - 1; i >= 0; i--)
 		cout << v[i];
 	cout << endl;
 

@@ -1,6 +1,6 @@
 #include <iostream>
 #include <string>
-#include <set>
+#include <vector>
 #include <map>
 
 using namespace std;
@@ -10,22 +10,19 @@ main()
 {
 	int q;
 	cin >> q;
-	map<set<string>, int> bus;
+	map<vector<string>, int> bus;
 
 	for (int i = 0; i < q; i++) {
 		int n;
 		cin >> n;
-		set<string> stops;
-		for (int i = 0; i < n; i++) {
-			string stop;
+		vector<string> stops(n);
+		for (auto& stop : stops)
 			cin >> stop;
-			stops.insert(stop);
-		}
 
 		if (bus.count(stops) == 1) {
 			cout << "Already exists for " << bus[stops] << endl;
 		} else {
-			int num = bus.size() + 1;
+			int num = (int) bus.size() + 1;
 			bus[stops] = num;
 			cout << "New bus " << num << endl;
 		}
