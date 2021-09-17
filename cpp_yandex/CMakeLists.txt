@@ -15,6 +15,9 @@ if(WIN32 AND MSVC AND MSVC_VERSION GREATER 1400)
     add_compile_options(/MP)
 endif()
 
+set (MAIN_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/main.cmake")
+set (INNER_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/inner.cmake")
+
 link_directories(${BOOST_LIBRARYDIR})
 include_directories(${BOOST_INCLUDEDIR})
 
