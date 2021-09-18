@@ -1,0 +1,5 @@
+add_subdirectory ("week1")
+add_subdirectory ("week2")
+#add_subdirectory ("week3_4")
+#add_subdirectory ("week5")
+#add_subdirectory ("week6")

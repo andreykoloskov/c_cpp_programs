@@ -13,7 +13,7 @@ int main() {
         cin >> t;
         sum += t;
     }
-    double avg = sum / n;
+    double avg = static_cast<double>(sum) / n;
 
     vector<int> res;
     int cnt = 0;

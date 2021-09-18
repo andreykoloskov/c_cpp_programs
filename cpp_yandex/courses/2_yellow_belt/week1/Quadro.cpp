@@ -36,3 +36,8 @@ pair<T1, T2> Sqr(const pair<T1, T2>& pr) {
     return make_pair(Sqr(pr.first), Sqr(pr.second));
 }
 
+int main()
+{
+	return 0;
+}
+
