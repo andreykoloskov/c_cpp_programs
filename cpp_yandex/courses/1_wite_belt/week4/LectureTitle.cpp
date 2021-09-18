@@ -43,29 +43,33 @@ struct LectureTitle {
 int
 main()
 {
-LectureTitle title(
+LectureTitle title1(
     Specialization("C++"),
     Course("White belt"),
     Week("4th")
 );
 
-LectureTitle title("C++", "White belt", "4th");
+//LectureTitle title2("C++", "White belt", "4th");
 
-LectureTitle title(string("C++"), string("White belt"), string("4th"));
+//LectureTitle title3(string("C++"), string("White belt"), string("4th"));
 
-LectureTitle title = {"C++", "White belt", "4th"};
+//LectureTitle title4 = {"C++", "White belt", "4th"};
 
-LectureTitle title = {{"C++"}, {"White belt"}, {"4th"}};
+//LectureTitle title5 = {{"C++"}, {"White belt"}, {"4th"}};
 
-LectureTitle title(
+/*
+LectureTitle title6(
     Course("White belt"),
     Specialization("C++"),
     Week("4th")
 );
+*/
 
-LectureTitle title(
+/*
+LectureTitle title7(
     Specialization("C++"),
     Week("4th"),
     Course("White belt")
 );
+*/
 }

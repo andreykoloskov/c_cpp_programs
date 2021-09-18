@@ -80,7 +80,7 @@ public:
         if (innerDB.count(date) == 0)
             return 0;
 
-        int cnt = innerDB[date].size();
+        int cnt = static_cast<int>(innerDB[date].size());
         innerDB.erase(date);
         return cnt;
     }

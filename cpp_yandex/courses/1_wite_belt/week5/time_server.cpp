@@ -10,7 +10,7 @@ string AskTimeServer() {
        * выброс исключения system_error
        * выброс другого исключения с сообщением.
     */
-    //return "01:01:01";
+    return "01:01:01";
     //throw system_error(error_code());
     //throw runtime_error("HH");
 }
@@ -29,7 +29,7 @@ public:
             LastFetchedTime = AskTimeServer();
         } catch (system_error&) {
             return LastFetchedTime;
-        } catch (exception& ex) {
+        } catch (exception&) {
            throw;
         }
         return LastFetchedTime;

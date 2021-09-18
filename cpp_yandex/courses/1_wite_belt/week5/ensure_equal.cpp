@@ -12,3 +12,14 @@ void EnsureEqual(const string& left, const string& right) {
         throw runtime_error(ss.str());
     }
 }
+
+int main()
+{
+	try {
+		EnsureEqual("a", "a");
+	}
+	catch(exception&) {
+	}
+	
+	return 0;
+}
