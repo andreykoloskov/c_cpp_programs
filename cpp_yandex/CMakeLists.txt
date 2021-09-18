@@ -17,6 +17,8 @@ endif()
 
 set (MAIN_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/main.cmake")
 set (INNER_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/inner.cmake")
+set (DEFINITION_FILES_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/definition_files.cmake")
+set (DEFINITION_DIRECTORIES_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/definition_directories.cmake")
 
 link_directories(${BOOST_LIBRARYDIR})
 include_directories(${BOOST_INCLUDEDIR})

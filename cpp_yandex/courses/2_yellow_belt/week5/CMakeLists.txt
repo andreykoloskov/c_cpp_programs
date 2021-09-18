@@ -1,6 +1,9 @@
-cmake_minimum_required(VERSION 3.10)
-project(lesson5)
+﻿include("${MAIN_INCLUDE}")
 
-set(CMAKE_CXX_STANDARD 17)
+file(GLOB HEADER_NAME *.h *.hpp)
+file(GLOB CPP_NAMES *.cpp)
 
-add_executable(lesson5 PersonActivities.cpp)
+foreach(CPP_NAME ${CPP_NAMES})
+	include("${DEFINITION_FILES_INCLUDE}")
+	include("${INNER_INCLUDE}")
+endforeach()

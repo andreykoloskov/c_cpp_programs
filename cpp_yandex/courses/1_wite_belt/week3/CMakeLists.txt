@@ -1,13 +1,9 @@
 ﻿include("${MAIN_INCLUDE}")
 
-foreach(NUMBER RANGE 1 2)
-	set(CURRENT_NAME "main${NUMBER}")
-	set(CPP_NAME "${CURRENT_NAME}.cpp")	
-	include("${INNER_INCLUDE}")
-endforeach()
+file(GLOB HEADER_NAME *.h *.hpp)
+file(GLOB CPP_NAMES *.cpp)
 
-foreach (MAIN_NAME Person Person0 Person2 ReversibleString SortedStrings Incognizable)
-	set(CURRENT_NAME "${MAIN_NAME}")
-	set(CPP_NAME "${CURRENT_NAME}.cpp")	
+foreach(CPP_NAME ${CPP_NAMES})
+	include("${DEFINITION_FILES_INCLUDE}")
 	include("${INNER_INCLUDE}")
 endforeach()

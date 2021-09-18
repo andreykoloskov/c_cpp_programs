@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 
 using namespace std;
 
@@ -18,3 +19,8 @@ public:
         cout << Name << " barks: woof!" << endl;
     }
 };
+
+int main()
+{
+	return 0;
+}

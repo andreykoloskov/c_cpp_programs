@@ -10,7 +10,7 @@ void MergeSort(RandomIt range_begin, RandomIt range_end) {
         return;
 
     vector<typename RandomIt::value_type> elements(range_begin, range_end);
-    int middle3 = (elements.end() - elements.begin()) / 3;
+    long long middle3 = (elements.end() - elements.begin()) / 3;
     MergeSort(elements.begin(), elements.begin() + middle3);
     MergeSort(elements.begin() + middle3, elements.begin() + 2 * middle3);
     MergeSort(elements.begin() + 2 * middle3, elements.end());

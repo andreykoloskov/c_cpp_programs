@@ -1,7 +1,9 @@
 ﻿include("${MAIN_INCLUDE}")
 
-foreach (MAIN_NAME correct main starter test_equation test_palindrome test_person test_rational)
-	set(CURRENT_NAME "${MAIN_NAME}")
-	set(CPP_NAME "${CURRENT_NAME}.cpp")	
+file(GLOB HEADER_NAME *.h *.hpp)
+file(GLOB CPP_NAMES *.cpp)
+
+foreach(CPP_NAME ${CPP_NAMES})
+	include("${DEFINITION_FILES_INCLUDE}")
 	include("${INNER_INCLUDE}")
 endforeach()

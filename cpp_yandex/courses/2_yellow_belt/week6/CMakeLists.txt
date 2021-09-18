@@ -1,6 +1,13 @@
-cmake_minimum_required(VERSION 3.10)
-project(lesson6)
+﻿include("${MAIN_INCLUDE}")
 
-set(CMAKE_CXX_STANDARD 17)
+file(GLOB HEADER_NAME *.h *.hpp)
+file(GLOB CPP_NAMES *.cpp)
+file(GLOB DIRECTORIES true *)
 
-add_executable(lesson6 main.cpp token.cpp condition_parser.cpp condition_parser_test.cpp database.cpp date.cpp node.cpp)
+foreach(DIRECTORY ${DIRECTORIES})
+    if (IS_DIRECTORY ${DIRECTORY})
+		include("${DEFINITION_DIRECTORIES_INCLUDE}")
+		include("${INNER_INCLUDE}")
+	endif()
+endforeach()
+

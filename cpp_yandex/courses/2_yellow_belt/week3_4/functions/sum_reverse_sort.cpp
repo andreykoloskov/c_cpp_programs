@@ -13,3 +13,8 @@ string Reverse(string s) {
 void Sort(vector<int>& nums) {
     sort(nums.begin(), nums.end());
 }
+
+int main()
+{
+	return 0;
+}

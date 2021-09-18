@@ -1,6 +1,18 @@
-cmake_minimum_required(VERSION 3.10)
-project(lesson3)
+﻿include("${MAIN_INCLUDE}")
 
-set(CMAKE_CXX_STANDARD 17)
+file(GLOB HEADER_NAME *.h *.hpp)
+file(GLOB CPP_NAMES *.cpp)
+file(GLOB DIRECTORIES true *)
 
-add_executable(lesson3 ArithmeticOperations2.cpp)
+foreach(CPP_NAME ${CPP_NAMES})
+	include("${DEFINITION_FILES_INCLUDE}")
+	include("${INNER_INCLUDE}")
+endforeach()
+
+foreach(DIRECTORY ${DIRECTORIES})
+    if (IS_DIRECTORY ${DIRECTORY})
+		include("${DEFINITION_DIRECTORIES_INCLUDE}")
+		include("${INNER_INCLUDE}")
+	endif()
+endforeach()
+

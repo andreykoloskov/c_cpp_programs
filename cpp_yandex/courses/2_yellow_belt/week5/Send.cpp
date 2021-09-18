@@ -47,3 +47,8 @@ private:
 void Notify(INotifier& notifier, const string& message) {
     notifier.Notify(message);
 }
+
+int main()
+{
+	return 0;
+}
