@@ -1,3 +1,14 @@
+/*
+Часть 5
+Наконец, вам нужно реализовать возможность использовать объекты класса Rational в качестве элементов контейнера set и ключей в контейнере map. Пример:
+set<Rational> rationals;
+rationals.insert(Rational(1, 2));
+rationals.insert(Rational(1, 3));
+
+map<Rational, string> name;
+name[Rational(1, 2)] = "одна вторая";
+*/
+
 #include <iostream>
 #include <map>
 #include <set>

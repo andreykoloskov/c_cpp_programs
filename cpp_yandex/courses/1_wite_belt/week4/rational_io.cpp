@@ -1,3 +1,10 @@
+/*
+В этой части вам нужно реализовать операторы ввода и вывода для класса Rational. В результате у вас должен работать, например, такой код
+Rational r;
+cin >> r;
+cout << r;
+*/
+
 #include <iostream>
 #include <sstream>
 using namespace std;
