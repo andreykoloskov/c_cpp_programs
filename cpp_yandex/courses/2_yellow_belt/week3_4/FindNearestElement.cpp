@@ -1,3 +1,12 @@
+/*
+Напишите функцию FindNearestElement, для множества целых чисел numbers и данного числа border возвращающую итератор на элемент множества, ближайший к border. Если ближайших элементов несколько, верните итератор на наименьший из них.
+set<int>::const_iterator FindNearestElement(
+    const set<int>& numbers,
+    int border);
+// set<int>::const_iterator —
+// тип итераторов для константного множества целых чисел
+*/
+
 #include <iostream>
 #include <set>
 #include <algorithm>
