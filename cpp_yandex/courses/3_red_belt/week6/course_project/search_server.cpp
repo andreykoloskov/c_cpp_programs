@@ -5,6 +5,7 @@
 #include <iterator>
 #include <sstream>
 #include <iostream>
+#include <iterator>
 
 vector<string> SplitIntoWords(const string& line) {
   istringstream words_input(line);
@@ -19,7 +20,7 @@ void SearchServer::UpdateDocumentBase(istream& document_input) {
   InvertedIndex new_index;
 
   for (string current_document; getline(document_input, current_document); ) {
-    new_index.Add(move(current_document));
+    new_index.Add(current_document);
   }
 
   index = move(new_index);
@@ -29,17 +30,16 @@ void SearchServer::AddQueriesStream(
   istream& query_input, ostream& search_results_output
 ) {
   for (string current_query; getline(query_input, current_query); ) {
-    const auto words = SplitIntoWords(current_query);
-
     map<size_t, size_t> docid_count;
-    for (const auto& word : words) {
-      for (const size_t docid : index.Lookup(word)) {
-        docid_count[docid]++;
+    map<size_t, size_t> res;
+    for (const auto& word : SplitIntoWords(current_query)) {
+      for (const auto& [docid, cnt] : index.Lookup(word, res)) {
+        docid_count[docid] += cnt;
       }
     }
 
     vector<pair<size_t, size_t>> search_results(
-      docid_count.begin(), docid_count.end()
+      make_move_iterator(docid_count.begin()), make_move_iterator(docid_count.end())
     );
     sort(
       begin(search_results),
@@ -55,27 +55,28 @@ void SearchServer::AddQueriesStream(
 
     search_results_output << current_query << ':';
     for (auto [docid, hitcount] : Head(search_results, 5)) {
-      search_results_output << " {"
-        << "docid: " << docid << ", "
-        << "hitcount: " << hitcount << '}';
+        if (docid >= 0) {
+            search_results_output << " {"
+                << "docid: " << docid << ", "
+                << "hitcount: " << hitcount << '}';
+        }
     }
     search_results_output << endl;
   }
 }
 
-void InvertedIndex::Add(const string& document) {
-  docs.push_back(document);
-
-  const size_t docid = docs.size() - 1;
-  for (const auto& word : SplitIntoWords(document)) {
-    index[word].push_back(docid);
+void InvertedIndex::Add(string& document) {
+  const size_t docid = docs.size();
+  for (auto& word : SplitIntoWords(document)) {
+    ++index[move(word)][docid];
   }
+  docs.push_back(move(document));
 }
 
-list<size_t> InvertedIndex::Lookup(const string& word) const {
+const map<size_t, size_t>& InvertedIndex::Lookup(const string& word, const map<size_t, size_t>& res) const {
   if (auto it = index.find(word); it != index.end()) {
     return it->second;
   } else {
-    return {};
+    return res;
   }
 }
