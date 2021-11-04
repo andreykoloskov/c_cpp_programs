@@ -13,6 +13,7 @@ SearchServer::SearchServer(istream& document_input)
 
 void SearchServer::UpdateDocumentBase(istream& document_input)
 {
+    InvertedIndex new_index;
     future<InvertedIndex> asynch_index = async([&document_input] {
         InvertedIndex result;
         for (string current_document; getline(document_input, current_document); ) {
@@ -20,8 +21,7 @@ void SearchServer::UpdateDocumentBase(istream& document_input)
         }
         return move(result);
     });
-
-    InvertedIndex new_index = move(asynch_index.get());
+    new_index = asynch_index.get();
     {
         lock_guard g(m);
         index = move(new_index);
@@ -39,7 +39,7 @@ void SearchServer::AddQueriesStream(istream& query_input, ostream& search_result
     }
 
     size_t current_size = result.size();
-    size_t page_cnt = result.size() / 8 + ((result.size() % 8) ? 1 : 0);
+    size_t page_cnt = result.size() / 4 + ((result.size() % 4) ? 1 : 0);
     auto it1 = result.begin();
     auto it2 = result.begin() + page_cnt;
 
@@ -54,8 +54,8 @@ void SearchServer::AddQueriesStream(istream& query_input, ostream& search_result
                 vector<pair<size_t, size_t>> res;
 
                 {
+                    lock_guard g(m);
                     for (string_view word : SplitIntoWords(it->current_query)) {
-                        lock_guard g(m);
                         for (const auto& [docid, cnt] : index.Lookup(word, res)) {
                             counts[docid] += cnt;
                         }
