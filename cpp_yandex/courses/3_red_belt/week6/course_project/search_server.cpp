@@ -3,40 +3,44 @@
 #include <sstream>
 #include <iostream>
 #include <iterator>
+#include <thread>
 
 #include "search_server.h"
 #include "iterator_range.h"
 #include "utilities.h"
 
-SearchServer::SearchServer(istream& document_input)
+void UpdateDocumentBaseInner(istream& document_input, InvertedIndex& index, mutex& m)
 {
-    UpdateDocumentBase(document_input);
+    InvertedIndex result;
+    for (string current_document; getline(document_input, current_document); ) {
+        result.Add(current_document);
+    }
+    {
+        lock_guard g(m);
+        index = move(result);
+    }
 }
 
-void SearchServer::UpdateDocumentBase(istream& document_input)
+void AddQueriesStreamInner(istream& query_input, ostream& search_results_output, InvertedIndex& index, mutex& m)
 {
-  InvertedIndex new_index;
 
-  for (string current_document; getline(document_input, current_document); ) {
-    new_index.Add(current_document);
-  }
-
-  swap(index, new_index);
-}
-
-void SearchServer::AddQueriesStream(istream& query_input, ostream& search_results_output)
-{
-    vector<int> docids(index.doc_size());
-    vector<size_t> counts(index.doc_size());
+    this_thread::sleep_for(10ms);
+    vector<int> docids;
+    vector<size_t> counts;
 
     for (string current_query; getline(query_input, current_query); ) {
-        iota(docids.begin(), docids.end(), 0);
-        counts.assign(counts.size(), 0);
-        vector<pair<size_t, size_t>> res;
+        const auto words = SplitIntoWords(current_query);
+        lock_guard g(m);
+        {
+            docids.resize(index.doc_size());
+            iota(docids.begin(), docids.end(), 0);
+            counts.assign(index.doc_size(), 0);
+            vector<pair<size_t, size_t>> res;
 
-        for (string_view word : SplitIntoWords(current_query)) {
-            for (const auto& [docid, cnt] : index.Lookup(word, res)) {
-                counts[docid] += cnt;
+            for (string_view word : words) {
+                for (const auto& [docid, cnt] : index.Lookup(word, res)) {
+                    counts[docid] += cnt;
+                }
             }
         }
 
@@ -52,13 +56,33 @@ void SearchServer::AddQueriesStream(istream& query_input, ostream& search_result
 
         search_results_output << current_query << ':';
         for (auto docid : Head(docids, dist)) {
-            if (counts[docid] > 0) {
-                search_results_output << " {"
-                    << "docid: " << docid << ", "
-                    << "hitcount: " << counts[docid] << '}';
+            if (counts[docid] == 0) {
+                break;
             }
+            search_results_output << " {"
+                << "docid: " << docid << ", "
+                << "hitcount: " << counts[docid] << '}';
         }
         search_results_output << endl;
     }
+}
+
+SearchServer::SearchServer(istream& document_input)
+{
+    UpdateDocumentBase(document_input);
+}
+
+void SearchServer::UpdateDocumentBase(istream& document_input)
+{
+    futures.push_back(
+        async(UpdateDocumentBaseInner, ref(document_input), ref(index), ref(m))
+    );
+}
+
+void SearchServer::AddQueriesStream(istream& query_input, ostream& search_results_output)
+{
+    futures.push_back(
+        async(AddQueriesStreamInner, ref(query_input), ref(search_results_output), ref(index), ref(m))
+    );
 }
 

@@ -7,6 +7,9 @@
 #include <string>
 #include <numeric>
 #include <deque>
+#include <mutex>
+#include <future>
+#include <functional>
 
 #include "inverted_index.h"
 
@@ -21,4 +24,6 @@ public:
 
 private:
     InvertedIndex index;
+    mutex m;
+    vector<future<void>> futures;
 };
