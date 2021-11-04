@@ -1,12 +1,10 @@
 #include <algorithm>
 #include <iterator>
 #include <sstream>
-#include <iostream>
-#include <iterator>
-
 #include "search_server.h"
 #include "iterator_range.h"
 #include "utilities.h"
+
 
 SearchServer::SearchServer(istream& document_input)
 {
@@ -15,48 +13,89 @@ SearchServer::SearchServer(istream& document_input)
 
 void SearchServer::UpdateDocumentBase(istream& document_input)
 {
-  InvertedIndex new_index;
-
-  for (string current_document; getline(document_input, current_document); ) {
-    new_index.Add(current_document);
-  }
-
-  swap(index, new_index);
+    InvertedIndex new_index;
+    future<InvertedIndex> asynch_index = async([&document_input] {
+        InvertedIndex result;
+        for (string current_document; getline(document_input, current_document); ) {
+            result.Add(current_document);
+        }
+        return move(result);
+    });
+    new_index = asynch_index.get();
+    {
+        lock_guard g(m);
+        index = move(new_index);
+    }
 }
 
 void SearchServer::AddQueriesStream(istream& query_input, ostream& search_results_output)
 {
-    vector<int> docids(index.doc_size());
-    vector<size_t> counts(index.doc_size());
+    vector<Element> result;
+    result.reserve(query_max_size);
+    vector<future<void>> futures;
 
     for (string current_query; getline(query_input, current_query); ) {
-        iota(docids.begin(), docids.end(), 0);
-        counts.assign(counts.size(), 0);
-        vector<pair<size_t, size_t>> res;
+        result.push_back({ move(current_query), 0, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0} });
+    }
 
-        for (string_view word : SplitIntoWords(current_query)) {
-            for (const auto& [docid, cnt] : index.Lookup(word, res)) {
-                counts[docid] += cnt;
+    size_t current_size = result.size();
+    size_t page_cnt = result.size() / 4 + ((result.size() % 4) ? 1 : 0);
+    auto it1 = result.begin();
+    auto it2 = result.begin() + page_cnt;
+
+    while (it1 != result.end()) {
+        futures.push_back(async([this, it1, it2] {
+            vector<int> docids(max_size);
+            vector<size_t> counts(max_size);
+
+            for (auto it = it1; it != it2; ++it) {
+                iota(docids.begin(), docids.end(), 0);
+                counts.assign(counts.size(), 0);
+                vector<pair<size_t, size_t>> res;
+
+                {
+                    lock_guard g(m);
+                    for (string_view word : SplitIntoWords(it->current_query)) {
+                        for (const auto& [docid, cnt] : index.Lookup(word, res)) {
+                            counts[docid] += cnt;
+                        }
+                    }
+                }
+
+                size_t dist = docids.size() < 5 ? docids.size() : 5;
+                partial_sort(docids.begin(), docids.begin() + dist, docids.end(),
+                    [&counts](int lhs, int rhs) {
+                        int64_t lhs_docid = lhs;
+                        auto lhs_hit_count = counts[lhs_docid];
+                        int64_t rhs_docid = rhs;
+                        auto rhs_hit_count = counts[rhs_docid];
+                        return make_pair(lhs_hit_count, -lhs_docid) > make_pair(rhs_hit_count, -rhs_docid);
+                    });
+
+                for (auto docid : Head(docids, dist)) {
+                    if (counts[docid] > 0) {
+                        it->docids[it->quantity] = docid;
+                        it->hitcounts[it->quantity] = counts[docid];
+                        ++it->quantity;
+                    }
+                }
             }
-        }
+        }));
 
-        size_t dist = docids.size() < 5 ? docids.size() : 5;
-        partial_sort(docids.begin(), docids.begin() + dist, docids.end(),
-                [&counts](int lhs, int rhs) {
-                    int64_t lhs_docid = lhs;
-                    auto lhs_hit_count = counts[lhs_docid];
-                    int64_t rhs_docid = rhs;
-                    auto rhs_hit_count = counts[rhs_docid];
-                    return make_pair(lhs_hit_count, -lhs_docid) > make_pair(rhs_hit_count, -rhs_docid);
-                });
+        it1 = it2;
+        it2 = (result.end() - it2 >= page_cnt) ? it1 + page_cnt : result.end();
+    }
 
-        search_results_output << current_query << ':';
-        for (auto docid : Head(docids, dist)) {
-            if (counts[docid] > 0) {
-                search_results_output << " {"
-                    << "docid: " << docid << ", "
-                    << "hitcount: " << counts[docid] << '}';
-            }
+    for (auto& f : futures) {
+        f.get();
+    }
+
+    for (const auto& element : result) {
+        search_results_output << element.current_query << ':';
+        for (size_t i = 0; i < element.quantity; ++i) {
+            search_results_output << " {"
+                << "docid: " << element.docids[i] << ", "
+                << "hitcount: " << element.hitcounts[i] << '}';
         }
         search_results_output << endl;
     }
