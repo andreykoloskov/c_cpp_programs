@@ -23,7 +23,6 @@ public:
     void AddQueriesStream(istream& query_input, ostream& search_results_output);
 
 private:
-    InvertedIndex index;
-    mutex m;
+    Synchronized<InvertedIndex> index;
     vector<future<void>> futures;
 };
