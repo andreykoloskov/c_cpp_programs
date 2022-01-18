@@ -1,8 +1,8 @@
 rem @echo off
 rem echo "INIT MSVS Environment"
-rem cd "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\" 
-rem call vcvars64.bat
-rem cd %~dp0
+cd "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\" 
+call vcvars64.bat
+cd %~dp0
 
 if exist build (
     echo "DELETE build directory"
@@ -16,7 +16,7 @@ cd build
 
 echo "call cmake"
 cmake ^
-    rem -G "Visual Studio 15 2017" ^
+    -G "Visual Studio 16 2019" ^
 	-DBOOST_ROOT=C:\Users\Andrey\Documents\post_msu_prac\boost_1_69_0_win ^
 	-DBOOST_INCLUDEDIR=C:\Users\Andrey\Documents\post_msu_prac\boost_1_69_0_win ^
 	-DBOOST_LIBRARYDIR=C:\Users\Andrey\Documents\post_msu_prac\boost_1_69_0_win\stage\lib ^
