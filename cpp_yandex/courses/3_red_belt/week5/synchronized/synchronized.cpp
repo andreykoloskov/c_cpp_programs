@@ -14,37 +14,25 @@ using namespace std;
 template <typename T>
 class Synchronized {
 public:
-    explicit Synchronized(T initial = T())
-        : value(initial)
-    {
-    }
+  explicit Synchronized(T initial = T())
+    : value(move(initial))
+  {
+  }
 
-    struct Access {
-        Access(T& t, mutex& m)
-            : ref_to_value(t)
-            , ref_to_m(m)
-        {
-            ref_to_m.lock();
-        }
+  struct Access {
+    T& ref_to_value;
+    lock_guard<mutex> guard;
+  };
 
-        ~Access()
-        {
-            ref_to_m.unlock();
-        }
-
-        mutex& ref_to_m;
-        T& ref_to_value;
-    };
-
-    Access GetAccess()
-    {
-        return { value, m };
-    }
+  Access GetAccess() {
+    return {value, lock_guard(m)};
+  }
 
 private:
-    T value;
-    mutex m;
+  T value;
+  mutex m;
 };
+
 
 void TestConcurrentUpdate() {
   Synchronized<string> common_string;

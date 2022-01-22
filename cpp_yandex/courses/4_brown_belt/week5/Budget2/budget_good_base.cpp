@@ -99,6 +99,10 @@ struct MyData {
   double spend = 0.0;
 };
 
+MyData operator+(const MyData& d1, const MyData& d2) {
+  return { d1.income + d2.income, d1.spend + d2.spend };
+}
+
 struct BulkMoneyAdder {
   double delta = 0.0;
 };
@@ -110,14 +114,14 @@ struct BulkMoneySubber {
 constexpr uint8_t TAX_PERCENTAGE = 13;
 
 struct BulkTaxApplier {
-  BulkTaxApplier(int rate = TAX_PERCENTAGE, uint32_t cnt = 0)
-      : factor(1.0 - rate / 100.0)
-      , count(cnt) { }
-  double factor;
-  uint32_t count = 0;
+  double factor = 1.0;
+
+  void CombineWith(const BulkTaxApplier& other) {
+    factor *= other.factor;
+  }
 
   double ComputeFactor() const {
-    return pow(factor, count);
+    return factor;
   }
 };
 
@@ -138,17 +142,15 @@ public:
   {}
 
   void CombineWith(const BulkLinearUpdater& other) {
-    tax_.count += other.tax_.count;
     add_.delta = add_.delta * other.tax_.ComputeFactor() + other.add_.delta;
-    sub_.delta = sub_.delta + other.sub_.delta;
-    cout << tax_.count << " " << add_.delta << " " << sub_.delta << endl;
+    sub_.delta += other.sub_.delta;
+    tax_.factor *= other.tax_.factor;
   }
 
-  double Collapse(double origin, IndexSegment segment) const {
-    double res = origin * tax_.ComputeFactor() + add_.delta * segment.length();
-    cout << res << endl;
-    return res;
-    //return origin * tax_.ComputeFactor() + (add_.delta - sub_.delta) * segment.length();
+  MyData Collapse(MyData origin, IndexSegment segment) const {
+    double res1 = origin.income * tax_.ComputeFactor() + add_.delta * segment.length();
+    double res2 = origin.spend + sub_.delta * segment.length();
+    return { res1, res2 };
   }
 
 private:
@@ -335,7 +337,7 @@ IndexSegment MakeDateSegment(const Date& date_from, const Date& date_to) {
 }
 
 
-class BudgetManager : public SummingSegmentTree<double, BulkLinearUpdater> {
+class BudgetManager : public SummingSegmentTree<MyData, BulkLinearUpdater> {
 public:
     BudgetManager() : SummingSegmentTree(DAY_COUNT) {}
 };
@@ -378,14 +380,14 @@ struct ModifyRequest : Request {
   virtual void Process(BudgetManager& manager) const = 0;
 };
 
-struct ComputeIncomeRequest : ReadRequest<double> {
+struct ComputeIncomeRequest : ReadRequest<MyData> {
   ComputeIncomeRequest() : ReadRequest(Type::COMPUTE_INCOME) {}
   void ParseFrom(string_view input) override {
     date_from = Date::FromString(ReadToken(input));
     date_to = Date::FromString(input);
   }
 
-  double Process(const BudgetManager& manager) const override {
+  MyData Process(const BudgetManager& manager) const override {
     return manager.ComputeSum(MakeDateSegment(date_from, date_to));
   }
 
@@ -440,7 +442,7 @@ struct PayTaxRequest : ModifyRequest {
   }
 
   void Process(BudgetManager& manager) const override {
-    manager.AddBulkOperation(MakeDateSegment(date_from, date_to), BulkTaxApplier{rate, 1});
+    manager.AddBulkOperation(MakeDateSegment(date_from, date_to), BulkTaxApplier{ 1.0 - (rate / 100.0) });
   }
 
   Date date_from = START_DATE;
@@ -509,8 +511,8 @@ vector<RequestHolder> ReadRequests(istream& in_stream = cin) {
   return requests;
 }
 
-vector<double> ProcessRequests(const vector<RequestHolder>& requests) {
-  vector<double> responses;
+vector<MyData> ProcessRequests(const vector<RequestHolder>& requests) {
+  vector<MyData> responses;
   BudgetManager manager;
   for (const auto& request_holder : requests) {
     if (request_holder->type == Request::Type::COMPUTE_INCOME) {
@@ -524,9 +526,9 @@ vector<double> ProcessRequests(const vector<RequestHolder>& requests) {
   return responses;
 }
 
-void PrintResponses(const vector<double>& responses, ostream& stream = cout) {
-  for (const double response : responses) {
-    stream << response << endl;
+void PrintResponses(const vector<MyData>& responses, ostream& stream = cout) {
+  for (const auto response : responses) {
+    stream << (response.income - response.spend) << endl;
   }
 }
 
